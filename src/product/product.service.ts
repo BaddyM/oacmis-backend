@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { CreateProductDto, CreateStockTakeDto, StockTakeItemDto, UpdateStockTakeItemDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -52,6 +52,21 @@ export class ProductService {
             await this.syncMainBranchStock(tx, data.id, data.totalStock);
 
             return data;
+        });
+    }
+
+    async createBulk(items: CreateProductDto[]) {
+        if (!Array.isArray(items) || items.length === 0) {
+            throw new BadRequestException('items must be a non-empty array');
+        }
+        return this.prisma.$transaction(async (tx) => {
+            const created: any[] = [];
+            for (const dto of items) {
+                const data = await tx.product.create({ data: dto });
+                await this.syncMainBranchStock(tx, data.id, data.totalStock);
+                created.push(data);
+            }
+            return { message: `${created.length} product(s) created`, products: created };
         });
     }
 

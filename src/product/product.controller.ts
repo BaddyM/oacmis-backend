@@ -16,6 +16,11 @@ export class ProductController {
         return this.productService.create(createProductDto);
     }
 
+    @Post('bulk')
+    createBulk(@Body() body: { items: CreateProductDto[] }) {
+        return this.productService.createBulk(body?.items ?? []);
+    }
+
     @Get()
     @ApiQuery({ name: "page" })
     @ApiQuery({ name: "limit" })

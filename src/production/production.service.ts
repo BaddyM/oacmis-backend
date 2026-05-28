@@ -103,6 +103,59 @@ export class ProductionService {
     });
   }
 
+  async createBulk(items: CreateProductionDto[]) {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new BadRequestException('items must be a non-empty array');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const mainBranch = await this.resolveMainBranch(tx);
+      const created: any[] = [];
+
+      for (const dto of items) {
+        const quantity = Number(dto.quantity);
+        if (!dto.productId || !Number.isFinite(quantity) || quantity <= 0) {
+          throw new BadRequestException('Each item needs a productId and positive quantity');
+        }
+        const status: ProductionStatus = dto.status ?? ProductionStatus.EXPECTED;
+
+        if (status === ProductionStatus.PRINTED) {
+          await tx.product.update({
+            where: { id: dto.productId },
+            data: { totalStock: { increment: quantity } },
+          });
+          await tx.branchStock.upsert({
+            where: {
+              branchId_productId: { branchId: mainBranch.id, productId: dto.productId },
+            },
+            create: { branchId: mainBranch.id, productId: dto.productId, quantity },
+            update: { quantity: { increment: quantity } },
+          });
+        }
+
+        const production = await tx.production.create({
+          data: {
+            productId: dto.productId,
+            branchId: mainBranch.id,
+            quantity,
+            printedQuantity: status === ProductionStatus.PRINTED ? quantity : null,
+            status,
+            printedAt: status === ProductionStatus.PRINTED ? new Date() : null,
+            note: dto.note || null,
+            createdById: dto.createdById || null,
+          },
+          include: {
+            product: true,
+            branch: true,
+            createdBy: { select: { id: true, name: true, email: true } },
+          },
+        });
+        created.push(production);
+      }
+
+      return { message: `${created.length} production run(s) recorded`, productions: created };
+    });
+  }
+
   async markPrinted(id: string, opts: { actualQuantity?: number; createdById?: string } = {}) {
     return this.prisma.$transaction(async (tx) => {
       return this.markPrintedInTx(tx, id, opts);

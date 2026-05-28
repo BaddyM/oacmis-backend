@@ -17,6 +17,11 @@ export class ProductionController {
     return this.productionService.create(createProductionDto);
   }
 
+  @Post('bulk')
+  createBulk(@Body() body: { items: CreateProductionDto[] }) {
+    return this.productionService.createBulk(body?.items ?? []);
+  }
+
   @Get()
   @ApiQuery({ name: 'status', required: false, enum: ProductionStatus })
   findAll(@Query('status') status?: string) {

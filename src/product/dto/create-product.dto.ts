@@ -1,5 +1,5 @@
 import { ApiProperty, PartialType } from "@nestjs/swagger"
-import { HolidayType, ProductCategory } from "@prisma/client"
+import { ExamType, HolidayType, ProductCategory } from "@prisma/client"
 import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator"
 import { Type } from 'class-transformer';
 
@@ -13,6 +13,11 @@ export class CreateProductDto {
     @IsEnum(HolidayType, { message: "holidayType must be NEWS or BOND" })
     @IsOptional()
     holidayType?: HolidayType;
+
+    @ApiProperty({ required: false, enum: ExamType, description: "Only meaningful when category=exams" })
+    @IsEnum(ExamType, { message: "examType must be JUBRA or AMAZON" })
+    @IsOptional()
+    examType?: ExamType;
 
     @ApiProperty()
     @IsNumber()
