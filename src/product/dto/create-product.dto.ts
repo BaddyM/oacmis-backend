@@ -1,6 +1,6 @@
 import { ApiProperty, PartialType } from "@nestjs/swagger"
-import { ProductCategory } from "@prisma/client"
-import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator"
+import { HolidayType, ProductCategory } from "@prisma/client"
+import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator"
 import { Type } from 'class-transformer';
 
 export class CreateProductDto {
@@ -8,6 +8,11 @@ export class CreateProductDto {
     @IsEnum(ProductCategory, { message: "Please select the correct category" })
     @IsNotEmpty()
     category!: ProductCategory;
+
+    @ApiProperty({ required: false, enum: HolidayType, description: "Only meaningful when category=holiday_packages" })
+    @IsEnum(HolidayType, { message: "holidayType must be NEWS or BOND" })
+    @IsOptional()
+    holidayType?: HolidayType;
 
     @ApiProperty()
     @IsNumber()
@@ -38,6 +43,36 @@ export class CreateProductDto {
     @IsString()
     @IsOptional()
     subject?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    name?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    description?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    image?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    slug?: string;
+
+    @ApiProperty({ required: false })
+    @IsBoolean()
+    @IsOptional()
+    featured?: boolean;
+
+    @ApiProperty({ required: false })
+    @IsBoolean()
+    @IsOptional()
+    isPublished?: boolean;
 }
 
 export class StockTakeItemDto {

@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { ProductionStatus } from '@prisma/client';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateProductionDto {
 	@ApiProperty()
@@ -11,6 +12,11 @@ export class CreateProductionDto {
 	@IsNumber()
 	@IsNotEmpty()
 	quantity!: number;
+
+	@ApiProperty({ required: false, enum: ProductionStatus, default: ProductionStatus.EXPECTED })
+	@IsEnum(ProductionStatus)
+	@IsOptional()
+	status?: ProductionStatus;
 
 	@ApiProperty({ required: false })
 	@IsString()

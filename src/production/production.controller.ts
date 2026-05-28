@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Req } from '@nestjs/common';
+import { ProductionStatus } from '@prisma/client';
 import { ProductionService } from './production.service';
 import { CreateProductionDto } from './dto/create-production.dto';
 import { UpdateProductionDto } from './dto/update-production.dto';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 
 @ApiBearerAuth()
@@ -17,13 +18,37 @@ export class ProductionController {
   }
 
   @Get()
-  findAll() {
-    return this.productionService.findAll();
+  @ApiQuery({ name: 'status', required: false, enum: ProductionStatus })
+  findAll(@Query('status') status?: string) {
+    const normalized =
+      status === 'EXPECTED' || status === 'PRINTED' ? (status as ProductionStatus) : undefined;
+    return this.productionService.findAll(normalized);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.productionService.findOne(+id);
+  }
+
+  @Patch('bulk-mark-printed')
+  bulkMarkPrinted(
+    @Req() req: any,
+    @Body() body: { items: Array<{ id: string; actualQuantity?: number }> },
+  ) {
+    const createdById = req?.user?.userId ?? req?.user?.id;
+    return this.productionService.bulkMarkPrinted(body?.items ?? [], createdById);
+  }
+
+  @Patch(':id/mark-printed')
+  markPrinted(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: { actualQuantity?: number } = {},
+  ) {
+    return this.productionService.markPrinted(id, {
+      actualQuantity: body?.actualQuantity,
+      createdById: req?.user?.userId ?? req?.user?.id,
+    });
   }
 
   @Patch(':id')
@@ -33,6 +58,6 @@ export class ProductionController {
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.productionService.remove(+id);
+    return this.productionService.remove(id);
   }
 }
