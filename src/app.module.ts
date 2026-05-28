@@ -23,6 +23,7 @@ import { BranchPayablesModule } from './branch-payables/branch-payables.module';
 import { UploadModule } from './upload/upload.module';
 import { WebsiteModule } from './website/website.module';
 import { CmsModule } from './cms/cms.module';
+import { CashAccountModule } from './cash-account/cash-account.module';
 
 @Module({
     imports: [
@@ -70,6 +71,7 @@ import { CmsModule } from './cms/cms.module';
         UploadModule,
         WebsiteModule,
         CmsModule,
+        CashAccountModule,
     ],
     controllers: [],
     providers: [],

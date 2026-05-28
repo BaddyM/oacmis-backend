@@ -31,6 +31,18 @@ enum ExamType {
     AMAZON
 }
 
+enum ExamTerm {
+    TERM_1
+    TERM_2
+    TERM_3
+}
+
+enum ExamPeriod {
+    BEGINNING
+    MID
+    END
+}
+
 enum ProductionStatus {
     EXPECTED
     PRINTED
@@ -80,6 +92,7 @@ model Branch {
     branchDeposits  BranchDeposit[]
     transfersFrom   StockTransfer[]  @relation("TransferFromBranch")
     transfersTo     StockTransfer[]  @relation("TransferToBranch")
+    cashAccounts    CashAccount[]
 }
 
 model User {
@@ -223,6 +236,7 @@ model Product {
     category       ProductCategory
     holidayType    HolidayType?
     examType       ExamType?
+    examSet        String?
     name           String          @default("")
     description    String?         @db.Text
     image          String?
@@ -252,6 +266,8 @@ model Production {
     quantity        Int
     printedQuantity Int?
     status          ProductionStatus @default(PRINTED)
+    term            ExamTerm?
+    period          ExamPeriod?
     printedAt       DateTime?
     note            String?          @db.LongText
     createdById     String?
@@ -879,4 +895,65 @@ model WebsiteInquiry {
     @@index([status])
     @@index([type])
     @@index([createdAt])
+}
+
+enum CashAccountType {
+    CASH
+    BANK
+    MOBILE_MONEY
+    TILL
+}
+
+enum LedgerSource {
+    SALE
+    SALE_RETURN
+    CREDIT_PAYMENT
+    INVOICE_PAYMENT
+    EXPENSE
+    PURCHASE_PAYMENT
+    SALARY_PAYMENT
+    SALARY_ADVANCE
+    COMMISSION_PAYOUT
+    BRANCH_DEPOSIT
+    TRANSFER
+    ADJUSTMENT
+    OPENING_BALANCE
+}
+
+model CashAccount {
+    id             String          @id @default(uuid())
+    name           String
+    type           CashAccountType
+    branchId       String?
+    branch         Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+    currency       String          @default("UGX")
+    openingBalance Decimal         @default(0) @db.Decimal(14, 2)
+    isActive       Boolean         @default(true)
+    notes          String?         @db.Text
+    entries        LedgerEntry[]   @relation("LedgerAccount")
+    createdAt      DateTime        @default(now())
+    updatedAt      DateTime        @default(now()) @updatedAt
+
+    @@index([branchId])
+    @@index([type])
+}
+
+model LedgerEntry {
+    id                    String       @id @default(uuid())
+    accountId             String
+    account               CashAccount  @relation("LedgerAccount", fields: [accountId], references: [id], onDelete: Restrict)
+    amount                Decimal      @db.Decimal(14, 2)
+    occurredAt            DateTime
+    source                LedgerSource
+    referenceId           String?
+    counterpartyAccountId String?
+    description           String?      @db.Text
+    branchId              String?
+    createdById           String?
+    reconciledAt          DateTime?
+    createdAt             DateTime     @default(now())
+
+    @@index([accountId, occurredAt])
+    @@index([source, referenceId])
+    @@index([branchId])
 }

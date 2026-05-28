@@ -7,51 +7,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class ProductService {
     constructor(private readonly prisma: PrismaService) { }
 
-    private async resolveMainBranch(tx: any) {
-        const mainBranch = await tx.branch.findFirst({
-            where: {
-                OR: [{ isMainBranch: true }, { name: 'Main' }],
-            },
-            select: { id: true },
-        });
-
-        if (!mainBranch) {
-            throw new InternalServerErrorException('Main branch not found');
-        }
-
-        return mainBranch;
-    }
-
-    private async syncMainBranchStock(tx: any, productId: string, quantity: number) {
-        const mainBranch = await this.resolveMainBranch(tx);
-
-        await tx.branchStock.upsert({
-            where: {
-                branchId_productId: {
-                    branchId: mainBranch.id,
-                    productId,
-                },
-            },
-            create: {
-                branchId: mainBranch.id,
-                productId,
-                quantity,
-            },
-            update: {
-                quantity,
-            },
-        });
-    }
-
     async create(createProductDto: CreateProductDto) {
-        return this.prisma.$transaction(async (tx) => {
-            const data = await tx.product.create({
-                data: createProductDto,
-            });
-
-            await this.syncMainBranchStock(tx, data.id, data.totalStock);
-
-            return data;
+        // Products are catalog entries only — stock is created exclusively by
+        // production runs (and adjusted by transfers/sales). Force totalStock to 0.
+        return this.prisma.product.create({
+            data: { ...createProductDto, totalStock: 0 },
         });
     }
 
@@ -62,8 +22,9 @@ export class ProductService {
         return this.prisma.$transaction(async (tx) => {
             const created: any[] = [];
             for (const dto of items) {
-                const data = await tx.product.create({ data: dto });
-                await this.syncMainBranchStock(tx, data.id, data.totalStock);
+                const data = await tx.product.create({
+                    data: { ...dto, totalStock: 0 },
+                });
                 created.push(data);
             }
             return { message: `${created.length} product(s) created`, products: created };
@@ -100,25 +61,10 @@ export class ProductService {
     }
 
     async update(id: string, updateProductDto: UpdateProductDto) {
-        return this.prisma.$transaction(async (tx) => {
-            const current = await tx.product.findUnique({
-                where: { id },
-                select: { totalStock: true },
-            });
-
-            const data = await tx.product.update({
-                where: { id },
-                data: updateProductDto,
-            });
-
-            await this.syncMainBranchStock(
-                tx,
-                id,
-                updateProductDto.totalStock ?? current?.totalStock ?? data.totalStock,
-            );
-
-            return data;
-        });
+        // Don't allow edits to mutate inventory — stock is owned by Production
+        // (and adjusted by transfers/sales). Drop totalStock from the payload.
+        const { totalStock: _ignored, ...patch } = updateProductDto as any;
+        return this.prisma.product.update({ where: { id }, data: patch });
     }
 
     async delete(id: string) {

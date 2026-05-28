@@ -1,11 +1,16 @@
 import { Injectable } from '@nestjs/common';
+import { LedgerSource } from '@prisma/client';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { LedgerService } from 'src/cash-account/ledger.service';
 
 @Injectable()
 export class ExpenseService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly ledger: LedgerService,
+    ) { }
 
     async create(createExpenseDto: CreateExpenseDto) {
         let date = new Date().toISOString();
@@ -14,15 +19,31 @@ export class ExpenseService {
             date = new Date(createExpenseDto.date).toISOString()
         }
 
-        delete createExpenseDto.date;
+        const { date: _ignoredDate, cashAccountId, ...persisted } = createExpenseDto as any;
 
-        const data = await this.prisma.expense.create({
-            data: {
-                ...createExpenseDto,
-                createdAt: date,
-            },
+        return this.prisma.$transaction(async (tx) => {
+            const data = await tx.expense.create({
+                data: {
+                    ...persisted,
+                    createdAt: date,
+                },
+            });
+
+            // Outflow — record on the cashbook ledger if an account was chosen.
+            if (cashAccountId) {
+                await this.ledger.write(tx, {
+                    accountId: cashAccountId,
+                    amount: -Number(persisted.amount ?? 0),
+                    occurredAt: new Date(date),
+                    source: LedgerSource.EXPENSE,
+                    referenceId: data.id,
+                    description: persisted.description || `Expense (${persisted.category})`,
+                    createdById: persisted.userId,
+                });
+            }
+
+            return data;
         });
-        return data;
     }
 
     async findAll(page: number, limit: number, date?: string, branchId?: string) {

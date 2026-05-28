@@ -19,6 +19,11 @@ export class CreateProductDto {
     @IsOptional()
     examType?: ExamType;
 
+    @ApiProperty({ required: false, description: "Free-text set label, only meaningful for Primary 7 exams (e.g. 'Set I', 'Set II')" })
+    @IsString()
+    @IsOptional()
+    examSet?: string;
+
     @ApiProperty()
     @IsNumber()
     @IsNotEmpty()
@@ -34,10 +39,10 @@ export class CreateProductDto {
     @IsOptional()
     reorderLevel?: number;
 
-    @ApiProperty()
+    @ApiProperty({ required: false, description: "Ignored — always created with 0 stock. Stock is added via production." })
     @IsNumber()
-    @IsNotEmpty()
-    totalStock!: number;
+    @IsOptional()
+    totalStock?: number;
 
     @ApiProperty()
     @IsString()

@@ -74,6 +74,11 @@ export class CreateSaleDto {
   @IsString()
   @IsOptional()
   paymentReference?: string;
+
+  @ApiProperty({ required: false, description: "Cash account this sale was paid into (ignored for credit sales)" })
+  @IsString()
+  @IsOptional()
+  cashAccountId?: string;
 }
 
 export class CreateMultipleSaleDto {

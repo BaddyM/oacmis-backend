@@ -79,6 +79,8 @@ export class ProductionService {
           // null until the user marks it printed.
           printedQuantity: status === ProductionStatus.PRINTED ? quantity : null,
           status,
+          term: createProductionDto.term ?? null,
+          period: createProductionDto.period ?? null,
           printedAt: status === ProductionStatus.PRINTED ? new Date() : null,
           note: createProductionDto.note || null,
           createdById: createProductionDto.createdById || null,
@@ -139,6 +141,8 @@ export class ProductionService {
             quantity,
             printedQuantity: status === ProductionStatus.PRINTED ? quantity : null,
             status,
+            term: dto.term ?? null,
+            period: dto.period ?? null,
             printedAt: status === ProductionStatus.PRINTED ? new Date() : null,
             note: dto.note || null,
             createdById: dto.createdById || null,

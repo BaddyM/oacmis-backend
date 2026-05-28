@@ -10,6 +10,8 @@ import { CreateReturnDto } from './dto/return.dto';
 import { UpdateSaleDto } from './dto/update-sale.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditService } from 'src/audit/audit.service';
+import { LedgerService } from 'src/cash-account/ledger.service';
+import { LedgerSource } from '@prisma/client';
 import { v4 } from 'uuid';
 
 type SaleRecord = {
@@ -79,6 +81,7 @@ export class SalesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly ledger: LedgerService,
   ) {}
 
   private buildProductItemName(product: {
@@ -317,6 +320,21 @@ export class SalesService {
         const sale_data = (await this.prisma.sale.create({
           data: salePayload as never,
         })) as unknown as CreatedSale;
+
+        // Cashbook: record cash inflow on the chosen account (skip for credit sales).
+        if (!isOnCredit && saleItem.cashAccountId) {
+          const amount = Number(saleItem.unitPrice) * Number(saleItem.quantity);
+          await this.ledger.writeStandalone({
+            accountId: saleItem.cashAccountId,
+            amount,
+            occurredAt: new Date(),
+            source: LedgerSource.SALE,
+            referenceId: (sale_data as any).id,
+            description: `Sale: ${itemName}`,
+            branchId: rep.branchId,
+            createdById: rep.id,
+          });
+        }
 
         //Deduct from sales rep.
         if (rep.role === 'sales_rep' && saleItem.productId) {

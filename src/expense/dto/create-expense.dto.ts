@@ -27,4 +27,9 @@ export class CreateExpenseDto {
     @IsEnum(ExpenseCategory, { message: "Please select the correct category" })
     @IsNotEmpty()
     category!: ExpenseCategory;
+
+    @ApiProperty({ required: false, description: "Cash account this expense was paid from" })
+    @IsString()
+    @IsOptional()
+    cashAccountId?: string;
 }
