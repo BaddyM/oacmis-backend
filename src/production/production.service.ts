@@ -30,6 +30,10 @@ export class ProductionService {
     }
 
     const status: ProductionStatus = createProductionDto.status ?? ProductionStatus.EXPECTED;
+    const subject = createProductionDto.subject?.trim() || null;
+    // A subject-tagged run is a per-subject tracking record only — it never moves
+    // sellable stock. Sellable stock is registered with subject-less complete-set runs.
+    const affectsStock = !subject;
 
     return this.prisma.$transaction(async (tx) => {
       const mainBranch = await this.resolveMainBranch(tx);
@@ -43,11 +47,11 @@ export class ProductionService {
         throw new NotFoundException('Product not found');
       }
 
-      // Only PRINTED runs flow into inventory. EXPECTED rows are forecast/planning
-      // only and must not be transferable to other branches.
+      // Only PRINTED, subject-less runs flow into inventory. EXPECTED rows are
+      // forecast/planning only, and subject runs are per-subject tracking only.
       let updatedProduct = product;
       let mainBranchStock: any = null;
-      if (status === ProductionStatus.PRINTED) {
+      if (status === ProductionStatus.PRINTED && affectsStock) {
         updatedProduct = await tx.product.update({
           where: { id: createProductionDto.productId },
           data: { totalStock: { increment: quantity } },
@@ -79,6 +83,7 @@ export class ProductionService {
           // null until the user marks it printed.
           printedQuantity: status === ProductionStatus.PRINTED ? quantity : null,
           status,
+          subject,
           term: createProductionDto.term ?? null,
           period: createProductionDto.period ?? null,
           printedAt: status === ProductionStatus.PRINTED ? new Date() : null,
@@ -119,8 +124,10 @@ export class ProductionService {
           throw new BadRequestException('Each item needs a productId and positive quantity');
         }
         const status: ProductionStatus = dto.status ?? ProductionStatus.EXPECTED;
+        const subject = dto.subject?.trim() || null;
+        const affectsStock = !subject;
 
-        if (status === ProductionStatus.PRINTED) {
+        if (status === ProductionStatus.PRINTED && affectsStock) {
           await tx.product.update({
             where: { id: dto.productId },
             data: { totalStock: { increment: quantity } },
@@ -141,6 +148,7 @@ export class ProductionService {
             quantity,
             printedQuantity: status === ProductionStatus.PRINTED ? quantity : null,
             status,
+            subject,
             term: dto.term ?? null,
             period: dto.period ?? null,
             printedAt: status === ProductionStatus.PRINTED ? new Date() : null,
@@ -189,27 +197,31 @@ export class ProductionService {
       printedQty = n;
     }
 
-    const mainBranch = await this.resolveMainBranch(tx);
+    // Subject-tagged runs are per-subject tracking only and never move stock —
+    // marking one printed just records the printed quantity.
+    if (!existing.subject) {
+      const mainBranch = await this.resolveMainBranch(tx);
 
-    await tx.product.update({
-      where: { id: existing.productId },
-      data: { totalStock: { increment: printedQty } },
-    });
+      await tx.product.update({
+        where: { id: existing.productId },
+        data: { totalStock: { increment: printedQty } },
+      });
 
-    await tx.branchStock.upsert({
-      where: {
-        branchId_productId: {
+      await tx.branchStock.upsert({
+        where: {
+          branchId_productId: {
+            branchId: mainBranch.id,
+            productId: existing.productId,
+          },
+        },
+        create: {
           branchId: mainBranch.id,
           productId: existing.productId,
+          quantity: printedQty,
         },
-      },
-      create: {
-        branchId: mainBranch.id,
-        productId: existing.productId,
-        quantity: printedQty,
-      },
-      update: { quantity: { increment: printedQty } },
-    });
+        update: { quantity: { increment: printedQty } },
+      });
+    }
 
     return tx.production.update({
       where: { id },
@@ -227,6 +239,64 @@ export class ProductionService {
         branch: true,
         createdBy: { select: { id: true, name: true, email: true } },
       },
+    });
+  }
+
+  // Revert a printed run. For subject-less runs this removes the quantity that was
+  // added to inventory (product totalStock + Main branch stock); subject runs never
+  // moved stock, so reverting only flips their status.
+  async revertPrinted(id: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.production.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundException(`Production run ${id} not found`);
+      if (existing.status !== ProductionStatus.PRINTED) {
+        throw new BadRequestException('Only printed runs can be reverted');
+      }
+
+      if (!existing.subject) {
+        const reverseQty = existing.printedQuantity ?? existing.quantity;
+        const mainBranch = await this.resolveMainBranch(tx);
+
+        const product = await tx.product.findUnique({
+          where: { id: existing.productId },
+          select: { totalStock: true },
+        });
+        const mainStock = await tx.branchStock.findUnique({
+          where: {
+            branchId_productId: { branchId: mainBranch.id, productId: existing.productId },
+          },
+          select: { quantity: true },
+        });
+        if (
+          (product?.totalStock ?? 0) < reverseQty ||
+          (mainStock?.quantity ?? 0) < reverseQty
+        ) {
+          throw new BadRequestException(
+            'Cannot revert — the printed stock has already been distributed or sold from Main branch',
+          );
+        }
+
+        await tx.product.update({
+          where: { id: existing.productId },
+          data: { totalStock: { decrement: reverseQty } },
+        });
+        await tx.branchStock.update({
+          where: {
+            branchId_productId: { branchId: mainBranch.id, productId: existing.productId },
+          },
+          data: { quantity: { decrement: reverseQty } },
+        });
+      }
+
+      return tx.production.update({
+        where: { id },
+        data: { status: ProductionStatus.REVERTED },
+        include: {
+          product: true,
+          branch: true,
+          createdBy: { select: { id: true, name: true, email: true } },
+        },
+      });
     });
   }
 
@@ -275,7 +345,8 @@ export class ProductionService {
   async remove(id: string) {
     const existing = await this.prisma.production.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Production run not found');
-    if (existing.status === ProductionStatus.PRINTED) {
+    // Printed subject-tagged runs never entered stock, so they remain deletable.
+    if (existing.status === ProductionStatus.PRINTED && !existing.subject) {
       throw new BadRequestException(
         'Cannot delete a printed run — quantity is already in stock',
       );

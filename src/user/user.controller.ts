@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, BadRequestException, Res, UseGuards, Query, Inject } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, BadRequestException, Res, UseGuards, Query, Inject, Req } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto, CustomerDto, UpdateCustomerDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -139,7 +139,14 @@ export class UserController {
     @UseGuards(AuthGuard)
     @Patch('commission/payout/:id/paid')
     @ApiParam({ name: 'id' })
-    mark_commission_paid(@Param('id') id: string) {
-        return this.userService.mark_commission_paid(id);
+    mark_commission_paid(
+        @Req() req: any,
+        @Param('id') id: string,
+        @Body() body: { cashAccountId?: string } = {},
+    ) {
+        return this.userService.mark_commission_paid(id, {
+            cashAccountId: body?.cashAccountId,
+            createdById: req?.user?.userId ?? req?.user?.id,
+        });
     }
 }

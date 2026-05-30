@@ -40,6 +40,11 @@ export class CreateReturnDto {
   @IsString()
   @IsNotEmpty()
   approvedById!: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  cashAccountId?: string;
 }
 
 export class UpdateReturnDto extends PartialType(CreateReturnDto) {}

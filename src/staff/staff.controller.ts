@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Req } from '@nestjs/common';
 import { StaffService } from './staff.service';
 import { CreateSalaryAdvanceDto, CreateSalaryDto, CreateStaffDto, UpdateSalaryDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
@@ -56,8 +56,15 @@ export class StaffController {
     }
 
     @Patch('salary/:id/paid')
-    mark_salary_paid(@Param('id') id: string) {
-        return this.staffService.mark_salary_paid(id);
+    mark_salary_paid(
+        @Req() req: any,
+        @Param('id') id: string,
+        @Body() body: { cashAccountId?: string } = {},
+    ) {
+        return this.staffService.mark_salary_paid(id, {
+            cashAccountId: body?.cashAccountId,
+            createdById: req?.user?.userId ?? req?.user?.id,
+        });
     }
 
     @Get('salary/:id/payslip')

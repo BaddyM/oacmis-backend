@@ -143,6 +143,11 @@ export class CreditSalePaymentDto {
   @IsString()
   @IsOptional()
   reference?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  cashAccountId?: string;
 }
 
 export class UpdateCreditSalePaymentDto extends PartialType(

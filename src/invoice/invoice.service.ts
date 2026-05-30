@@ -1,6 +1,8 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditService } from 'src/audit/audit.service';
+import { LedgerService } from 'src/cash-account/ledger.service';
+import { LedgerSource } from '@prisma/client';
 import { v4 } from 'uuid';
 
 export interface CreateInvoiceItemDto {
@@ -27,6 +29,7 @@ export interface AddInvoicePaymentDto {
   reference?: string;
   notes?: string;
   userId: string;
+  cashAccountId?: string;
 }
 
 @Injectable()
@@ -34,6 +37,7 @@ export class InvoiceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly ledger: LedgerService,
   ) {}
 
   private buildProductName(product: {
@@ -314,6 +318,19 @@ export class InvoiceService {
           userId: addPaymentDto.userId,
         },
       });
+
+      // Cashbook: inflow against the chosen account.
+      if (addPaymentDto.cashAccountId) {
+        await this.ledger.writeStandalone({
+          accountId: addPaymentDto.cashAccountId,
+          amount: Number(addPaymentDto.amount),
+          occurredAt: new Date(),
+          source: LedgerSource.INVOICE_PAYMENT,
+          referenceId: payment.id,
+          description: `Invoice payment (${invoice.invoiceId ?? invoiceId})`,
+          createdById: addPaymentDto.userId,
+        });
+      }
 
       const newAmountPaid = invoice.amountPaid + addPaymentDto.amount;
       const newAmountDue = Math.max(0, invoice.totalAmount - newAmountPaid);

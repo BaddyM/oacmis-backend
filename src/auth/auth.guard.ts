@@ -48,15 +48,19 @@ export class AuthGuard implements CanActivate {
             const cacheKey = `auth_session:${token}`;
             let userSession: any = await this.cacheManager.get(cacheKey);
 
-            // Treat malformed cached values (e.g. legacy entries holding the token string) as cache miss
+            // Treat malformed cached values (e.g. legacy entries holding the token
+            // string, or older {id, role} entries without branchId) as cache miss
             const isValidSession =
-                userSession && typeof userSession === 'object' && 'role' in userSession;
+                userSession &&
+                typeof userSession === 'object' &&
+                'role' in userSession &&
+                'branchId' in userSession;
 
             if (!isValidSession) {
                 // 2. Cache Miss - Hit Prisma (The "Slow Path")
                 const userFromToken = await this.prisma.user.findFirst({
                     where: { accessToken: token, isActive: true },
-                    select: { id: true, role: true }, // Only select what you need
+                    select: { id: true, role: true, branchId: true }, // Only select what you need
                 });
 
                 if (!userFromToken) throw new UnauthorizedException();

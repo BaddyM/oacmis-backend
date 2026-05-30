@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { CreateUserDto, CustomerDto, UpdateCustomerDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { LedgerSource } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditService } from 'src/audit/audit.service';
+import { LedgerService } from 'src/cash-account/ledger.service';
 const bcrypt = require("bcryptjs");
 
 @Injectable()
@@ -10,6 +12,7 @@ export class UserService {
     constructor(
         private prisma: PrismaService,
         private readonly auditService: AuditService,
+        private readonly ledger: LedgerService,
     ) { }
 
     async create(createUserDto: CreateUserDto) {
@@ -300,8 +303,15 @@ export class UserService {
 
     //Customer
     async create_customer(customerDto: CustomerDto) {
+        // Only name is mandatory; coerce blank optional fields to null.
         const data = await this.prisma.customer.create({
-            data: customerDto,
+            data: {
+                ...customerDto,
+                email: customerDto.email || null,
+                phoneNumber: customerDto.phoneNumber || null,
+                address: customerDto.address || null,
+                branchId: customerDto.branchId || null,
+            },
         });
 
         await this.auditService.log({
@@ -327,9 +337,17 @@ export class UserService {
 
     async update_customer(id: string, updateCustomerDto: UpdateCustomerDto) {
         const before = await this.prisma.customer.findUnique({ where: { id } });
+        // Coerce blank optional fields to null so they can be cleared on update.
+        const { email, phoneNumber, address, branchId, ...rest } = updateCustomerDto;
         const data = await this.prisma.customer.update({
             where: { id },
-            data: updateCustomerDto,
+            data: {
+                ...rest,
+                ...(email !== undefined ? { email: email || null } : {}),
+                ...(phoneNumber !== undefined ? { phoneNumber: phoneNumber || null } : {}),
+                ...(address !== undefined ? { address: address || null } : {}),
+                ...(branchId !== undefined ? { branchId: branchId || null } : {}),
+            },
         });
 
         await this.auditService.log({
@@ -420,10 +438,27 @@ export class UserService {
         });
     }
 
-    async mark_commission_paid(id: string) {
-        return this.prisma.commissionPayout.update({
+    async mark_commission_paid(
+        id: string,
+        opts: { cashAccountId?: string; createdById?: string } = {},
+    ) {
+        const existing = await this.prisma.commissionPayout.findUnique({ where: { id } });
+        if (!existing) throw new InternalServerErrorException('Commission payout not found');
+        const updated = await this.prisma.commissionPayout.update({
             where: { id },
             data: { status: 'PAID', paidAt: new Date() },
         });
+        if (opts.cashAccountId && existing.status !== 'PAID' && updated.totalCommission > 0) {
+            await this.ledger.writeStandalone({
+                accountId: opts.cashAccountId,
+                amount: -Number(updated.totalCommission),
+                occurredAt: new Date(),
+                source: LedgerSource.COMMISSION_PAYOUT,
+                referenceId: updated.id,
+                description: `Commission payout (${updated.period})`,
+                createdById: opts.createdById,
+            });
+        }
+        return updated;
     }
 }

@@ -21,4 +21,14 @@ export class CreateDepositDto {
   @IsString()
   @IsOptional()
   recordedById?: string;
+
+  @ApiProperty({ required: false, description: 'Branch cash account funds left from' })
+  @IsString()
+  @IsOptional()
+  fromAccountId?: string;
+
+  @ApiProperty({ required: false, description: 'HQ / main cash account funds arrived in' })
+  @IsString()
+  @IsOptional()
+  toAccountId?: string;
 }

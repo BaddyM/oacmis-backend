@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
 import {
@@ -170,37 +170,12 @@ export class BranchService {
             }
         }
 
-        // Create transfers in a transaction
+        // Create transfers in a transaction. Like single transfers, these are
+        // created PENDING and move no stock until the receiving branch office
+        // confirms each one (see complete_stock_transfer).
         return this.prisma.$transaction(async (tx) => {
             const createdTransfers: any[] = [];
             for (const item of dto.items) {
-                // Decrement from source
-                await tx.branchStock.update({
-                    where: {
-                        branchId_productId: {
-                            branchId: dto.fromBranchId,
-                            productId: item.productId,
-                        },
-                    },
-                    data: { quantity: { decrement: item.quantity } },
-                });
-
-                // Increment to destination
-                await tx.branchStock.upsert({
-                    where: {
-                        branchId_productId: {
-                            branchId: dto.toBranchId,
-                            productId: item.productId,
-                        },
-                    },
-                    create: {
-                        branchId: dto.toBranchId,
-                        productId: item.productId,
-                        quantity: item.quantity,
-                    },
-                    update: { quantity: { increment: item.quantity } },
-                });
-
                 const t = await tx.stockTransfer.create({
                     data: {
                         fromBranchId: dto.fromBranchId,
@@ -208,8 +183,7 @@ export class BranchService {
                         productId: item.productId,
                         quantity: item.quantity,
                         createdById: dto.createdById,
-                        status: 'COMPLETED',
-                        completedAt: new Date(),
+                        status: 'PENDING',
                         notes: dto.notes,
                     },
                 });
@@ -234,7 +208,7 @@ export class BranchService {
         });
     }
 
-    async complete_stock_transfer(id: string) {
+    async complete_stock_transfer(id: string, actorId?: string) {
         const transfer = await this.prisma.stockTransfer.findUnique({
             where: { id },
         });
@@ -244,6 +218,26 @@ export class BranchService {
         if (transfer.status !== 'PENDING') {
             throw new InternalServerErrorException(
                 'Transfer is not pending',
+            );
+        }
+
+        // Only the office account of the receiving branch may confirm an incoming
+        // transfer; admins can confirm as an override. Confirming reconciles stock.
+        const actor = actorId
+            ? await this.prisma.user.findUnique({
+                  where: { id: actorId },
+                  select: { id: true, role: true, branchId: true },
+              })
+            : null;
+        if (!actor) {
+            throw new UnauthorizedException('User not authorized');
+        }
+        const isAdmin = actor.role === 'admin';
+        const isReceivingOffice =
+            actor.role === 'office' && actor.branchId === transfer.toBranchId;
+        if (!isAdmin && !isReceivingOffice) {
+            throw new ForbiddenException(
+                'Only the receiving branch office (or an admin) can confirm this transfer',
             );
         }
         return this.prisma.$transaction(async (tx) => {
@@ -275,7 +269,64 @@ export class BranchService {
                 data: {
                     status: 'COMPLETED',
                     completedAt: new Date(),
+                    completedById: actor.id,
                 },
+            });
+        });
+    }
+
+    // Reverse a PENDING transfer. Pending transfers have not moved any stock yet
+    // (stock only moves on completion), so cancelling just voids the record and any
+    // credit payable that was opened with it. Completed transfers cannot be reversed
+    // here because their stock has already been received.
+    async cancel_stock_transfer(id: string, actorId?: string) {
+        const actor = actorId
+            ? await this.prisma.user.findUnique({
+                  where: { id: actorId },
+                  select: { id: true, role: true },
+              })
+            : null;
+        if (!actor) {
+            throw new UnauthorizedException('User not authorized');
+        }
+        if (actor.role !== 'admin') {
+            throw new ForbiddenException('Only an admin can reverse a stock transfer');
+        }
+
+        const transfer = await this.prisma.stockTransfer.findUnique({
+            where: { id },
+            include: { payables: { include: { deposits: true } } },
+        });
+        if (!transfer) {
+            throw new InternalServerErrorException('Transfer not found');
+        }
+        if (transfer.status !== 'PENDING') {
+            throw new BadRequestException(
+                'Only a pending transfer can be reversed',
+            );
+        }
+
+        // A credit transfer opens a payable for the receiving branch. If the branch
+        // has already paid against it, the transfer can't be cleanly voided.
+        const paidPayable = transfer.payables.find((p) => p.deposits.length > 0);
+        if (paidPayable) {
+            throw new BadRequestException(
+                'Cannot reverse — the receiving branch has already made a deposit against this transfer',
+            );
+        }
+
+        return this.prisma.$transaction(async (tx) => {
+            // Void any open payable(s) tied to this transfer.
+            if (transfer.payables.length > 0) {
+                await tx.branchPayable.updateMany({
+                    where: { stockTransferId: transfer.id },
+                    data: { status: 'CANCELLED', outstanding: 0 },
+                });
+            }
+
+            return tx.stockTransfer.update({
+                where: { id },
+                data: { status: 'CANCELLED' },
             });
         });
     }

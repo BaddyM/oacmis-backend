@@ -74,6 +74,7 @@ export class InvoiceController {
       reference?: string;
       notes?: string;
       userId: string;
+      cashAccountId?: string;
     },
   ) {
     return this.invoiceService.addPayment(id, body);

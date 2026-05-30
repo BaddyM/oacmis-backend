@@ -1,11 +1,16 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { LedgerSource } from '@prisma/client';
 import { CreateSalaryAdvanceDto, CreateSalaryDto, CreateStaffDto, UpdateSalaryDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { LedgerService } from 'src/cash-account/ledger.service';
 
 @Injectable()
 export class StaffService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly ledger: LedgerService,
+    ) { }
 
     async create(createStaffDto: CreateStaffDto) {
         const data = await this.prisma.staff.create({
@@ -42,20 +47,35 @@ export class StaffService {
 
     //Salary
     async create_salary(createSalaryDto: CreateSalaryDto) {
-        const allowances = createSalaryDto.allowances ?? 0;
-        const deductions = createSalaryDto.deductions ?? 0;
-        const advanceDeducted = createSalaryDto.advanceDeducted ?? 0;
+        const { cashAccountId, ...persisted } = createSalaryDto;
+        const allowances = persisted.allowances ?? 0;
+        const deductions = persisted.deductions ?? 0;
+        const advanceDeducted = persisted.advanceDeducted ?? 0;
         const netPay =
-            createSalaryDto.amount + allowances - deductions - advanceDeducted;
+            persisted.amount + allowances - deductions - advanceDeducted;
         const data = await this.prisma.salary.create({
             data: {
-                ...createSalaryDto,
+                ...persisted,
                 allowances,
                 deductions,
                 advanceDeducted,
                 netPay,
             },
         });
+
+        // Cashbook: outflow if the salary is being recorded as already paid.
+        if (cashAccountId && data.status === 'COMPLETED' && netPay > 0) {
+            await this.ledger.writeStandalone({
+                accountId: cashAccountId,
+                amount: -Number(netPay),
+                occurredAt: new Date(),
+                source: LedgerSource.SALARY_PAYMENT,
+                referenceId: data.id,
+                description: `Salary payment (${persisted.period})`,
+                createdById: persisted.userId,
+            });
+        }
+
         return data;
     }
 
@@ -130,11 +150,25 @@ export class StaffService {
         return data;
     }
 
-    async mark_salary_paid(id: string) {
-        return this.prisma.salary.update({
+    async mark_salary_paid(id: string, opts: { cashAccountId?: string; createdById?: string } = {}) {
+        const existing = await this.prisma.salary.findUnique({ where: { id } });
+        if (!existing) throw new InternalServerErrorException('Salary not found');
+        const updated = await this.prisma.salary.update({
             where: { id },
             data: { status: 'COMPLETED', paidAt: new Date() },
         });
+        if (opts.cashAccountId && existing.status !== 'COMPLETED' && updated.netPay > 0) {
+            await this.ledger.writeStandalone({
+                accountId: opts.cashAccountId,
+                amount: -Number(updated.netPay),
+                occurredAt: new Date(),
+                source: LedgerSource.SALARY_PAYMENT,
+                referenceId: updated.id,
+                description: `Salary payment (${updated.period})`,
+                createdById: opts.createdById,
+            });
+        }
+        return updated;
     }
 
     async generate_payslip(id: string) {
@@ -166,13 +200,24 @@ export class StaffService {
 
     //Salary Advances
     async create_salary_advance(dto: CreateSalaryAdvanceDto) {
-        return this.prisma.salaryAdvance.create({
+        const advance = await this.prisma.salaryAdvance.create({
             data: {
                 staffId: dto.staffId,
                 amount: dto.amount,
                 reason: dto.reason,
             },
         });
+        if (dto.cashAccountId) {
+            await this.ledger.writeStandalone({
+                accountId: dto.cashAccountId,
+                amount: -Number(dto.amount),
+                occurredAt: new Date(),
+                source: LedgerSource.SALARY_ADVANCE,
+                referenceId: advance.id,
+                description: dto.reason || 'Salary advance',
+            });
+        }
+        return advance;
     }
 
     async list_salary_advances(staffId?: string) {

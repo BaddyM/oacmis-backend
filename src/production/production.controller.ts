@@ -26,7 +26,9 @@ export class ProductionController {
   @ApiQuery({ name: 'status', required: false, enum: ProductionStatus })
   findAll(@Query('status') status?: string) {
     const normalized =
-      status === 'EXPECTED' || status === 'PRINTED' ? (status as ProductionStatus) : undefined;
+      status === 'EXPECTED' || status === 'PRINTED' || status === 'REVERTED'
+        ? (status as ProductionStatus)
+        : undefined;
     return this.productionService.findAll(normalized);
   }
 
@@ -54,6 +56,11 @@ export class ProductionController {
       actualQuantity: body?.actualQuantity,
       createdById: req?.user?.userId ?? req?.user?.id,
     });
+  }
+
+  @Patch(':id/revert')
+  revertPrinted(@Param('id') id: string) {
+    return this.productionService.revertPrinted(id);
   }
 
   @Patch(':id')

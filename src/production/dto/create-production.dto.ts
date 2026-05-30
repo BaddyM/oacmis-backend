@@ -18,6 +18,11 @@ export class CreateProductionDto {
 	@IsOptional()
 	status?: ProductionStatus;
 
+	@ApiProperty({ required: false, description: 'Exam subject for per-subject production tracking. When set, the run does not move sellable stock.' })
+	@IsString()
+	@IsOptional()
+	subject?: string;
+
 	@ApiProperty({ required: false, enum: ExamTerm, description: 'Term this batch is produced for (applies to all categories)' })
 	@IsEnum(ExamTerm, { message: 'term must be TERM_1, TERM_2 or TERM_3' })
 	@IsOptional()

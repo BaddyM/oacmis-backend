@@ -1,5 +1,5 @@
 import { ApiProperty, PartialType } from "@nestjs/swagger";
-import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from "class-validator";
 
 export enum UserRole {
     admin = "admin",
@@ -56,25 +56,26 @@ export class CustomerDto {
     @IsNotEmpty()
     name!: string;
 
-    @ApiProperty({ name: "email", type: "string" })
+    @ApiProperty({ name: "email", type: "string", required: false })
+    @ValidateIf((o) => o.email !== undefined && o.email !== '')
     @IsEmail()
     @IsOptional()
     email?: string;
 
-    @ApiProperty({ name: "phoneNumber", type: "string" })
+    @ApiProperty({ name: "phoneNumber", type: "string", required: false })
     @IsString()
-    @IsNotEmpty()
-    phoneNumber!: string;
+    @IsOptional()
+    phoneNumber?: string;
 
-    @ApiProperty({ name: "address", type: "string", example: "kampala" })
+    @ApiProperty({ name: "address", type: "string", example: "kampala", required: false })
     @IsString()
     @IsOptional()
     address?: string;
 
-    @ApiProperty({ name: "branchId", type: "string" })
+    @ApiProperty({ name: "branchId", type: "string", required: false })
     @IsString()
-    @IsNotEmpty()
-    branchId!: string;
+    @IsOptional()
+    branchId?: string;
 
     @ApiProperty({ name: "creditLimit", type: "number", required: false })
     @IsOptional()

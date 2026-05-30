@@ -84,6 +84,11 @@ export class CreateSalaryDto {
     @IsString()
     @IsOptional()
     memo?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    cashAccountId?: string;
 }
 
 export class UpdateSalaryDto extends PartialType(CreateSalaryDto) { }
@@ -103,4 +108,9 @@ export class CreateSalaryAdvanceDto {
     @IsString()
     @IsOptional()
     reason?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    cashAccountId?: string;
 }

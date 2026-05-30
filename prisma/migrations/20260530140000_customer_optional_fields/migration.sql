@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `Customer` MODIFY COLUMN `phoneNumber` VARCHAR(191) NULL;
+ALTER TABLE `Customer` MODIFY COLUMN `branchId` VARCHAR(191) NULL;

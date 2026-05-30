@@ -24,6 +24,7 @@ enum ProductCategory {
 enum HolidayType {
     NEWS
     BOND
+    AMAZON
 }
 
 enum ExamType {
@@ -46,6 +47,7 @@ enum ExamPeriod {
 enum ProductionStatus {
     EXPECTED
     PRINTED
+    REVERTED
 }
 
 enum ExpenseCategory {
@@ -197,12 +199,12 @@ model Customer {
     id          String       @id @default(uuid())
     name        String
     email       String?
-    phoneNumber String
+    phoneNumber String?
     address     String?
-    branchId    String
+    branchId    String?
     creditLimit Float        @default(0)
     isDeleted   Boolean      @default(false)
-    branch      Branch       @relation(fields: [branchId], references: [id])
+    branch      Branch?      @relation(fields: [branchId], references: [id])
     createdAt   DateTime     @default(now())
     updatedAt   DateTime     @default(now()) @updatedAt
     sales       Sale[]
@@ -266,6 +268,10 @@ model Production {
     quantity        Int
     printedQuantity Int?
     status          ProductionStatus @default(PRINTED)
+    // Optional subject for per-subject exam production tracking. When set, the
+    // run is a tracking/reporting record only and does NOT move sellable stock;
+    // sellable stock is registered with subject-less (complete-set) runs.
+    subject         String?
     term            ExamTerm?
     period          ExamPeriod?
     printedAt       DateTime?
@@ -312,6 +318,9 @@ model StockTransfer {
     status       StockTransferStatus @default(PENDING)
     notes        String?             @db.LongText
     createdById  String
+    // User who confirmed receipt (receiving-branch office or admin). Scalar only —
+    // no relation, to avoid a second named User relation on this model.
+    completedById String?
     completedAt  DateTime?
     createdAt    DateTime            @default(now())
     updatedAt    DateTime            @default(now()) @updatedAt

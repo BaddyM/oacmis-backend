@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PurchaseOrderPaymentStatus, PurchaseOrderPaymentTerms, PurchaseOrderStatus } from '@prisma/client';
+import { LedgerSource, PurchaseOrderPaymentStatus, PurchaseOrderPaymentTerms, PurchaseOrderStatus } from '@prisma/client';
 import { AuditService } from 'src/audit/audit.service';
+import { LedgerService } from 'src/cash-account/ledger.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePurchaseOrderPaymentDto } from './dto/create-purchase-order-payment.dto';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
@@ -14,6 +15,7 @@ export class SupplierService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly ledger: LedgerService,
   ) { }
 
   private buildPaymentStatus(amountPaid: number, totalPrice: number): PurchaseOrderPaymentStatus {
@@ -304,7 +306,7 @@ export class SupplierService {
     const nextStatus = this.buildPaymentStatus(nextPaid, order.totalPrice);
 
     return this.prisma.$transaction(async (tx) => {
-      await tx.purchaseOrderPayment.create({
+      const payment = await tx.purchaseOrderPayment.create({
         data: {
           purchaseOrderId,
           amount: paymentDto.amount,
@@ -314,6 +316,18 @@ export class SupplierService {
           paidAt: paymentDto.paidAt ? new Date(paymentDto.paidAt) : undefined,
         },
       });
+
+      // Cashbook: outflow against the chosen account.
+      if (paymentDto.cashAccountId) {
+        await this.ledger.write(tx, {
+          accountId: paymentDto.cashAccountId,
+          amount: -Number(paymentDto.amount),
+          occurredAt: paymentDto.paidAt ? new Date(paymentDto.paidAt) : new Date(),
+          source: LedgerSource.PURCHASE_PAYMENT,
+          referenceId: payment.id,
+          description: paymentDto.note || `Supplier payment (PO ${purchaseOrderId})`,
+        });
+      }
 
       const purchaseOrder = await tx.purchaseOrder.update({
         where: { id: purchaseOrderId },

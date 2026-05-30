@@ -27,4 +27,9 @@ export class CreatePurchaseOrderPaymentDto {
     @IsString()
     @IsOptional()
     paidAt?: string;
+
+    @ApiPropertyOptional()
+    @IsString()
+    @IsOptional()
+    cashAccountId?: string;
 }

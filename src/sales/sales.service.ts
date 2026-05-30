@@ -636,6 +636,20 @@ export class SalesService {
               data: { status: 'COMPLETED' },
             });
           }
+
+          // Cashbook: record the inflow on the chosen account.
+          if (creditSalePaymentDto.cashAccountId) {
+            await this.ledger.writeStandalone({
+              accountId: creditSalePaymentDto.cashAccountId,
+              amount: Number(creditSalePaymentDto.paid),
+              occurredAt: new Date(),
+              source: LedgerSource.CREDIT_PAYMENT,
+              referenceId: data.id,
+              description: `Credit payment (order ${creditSalePaymentDto.orderId})`,
+              createdById: creditSalePaymentDto.userId,
+            });
+          }
+
           return data;
         } else {
           return {
@@ -728,7 +742,10 @@ export class SalesService {
     return { data, totalPages: Math.ceil(total / limit) };
   }
 
-  async complete_return(id: string) {
+  async complete_return(
+    id: string,
+    opts: { cashAccountId?: string; createdById?: string } = {},
+  ) {
     const ret = await this.prisma.saleReturn.findUnique({
       where: { id },
       include: { sale: true },
@@ -755,6 +772,20 @@ export class SalesService {
           update: { quantity: { increment: ret.quantity } },
         });
       }
+
+      // Cashbook: record the refund as an outflow on the chosen account.
+      if (opts.cashAccountId && ret.refundAmount && ret.refundAmount > 0) {
+        await this.ledger.write(tx, {
+          accountId: opts.cashAccountId,
+          amount: -Number(ret.refundAmount),
+          occurredAt: new Date(),
+          source: LedgerSource.SALE_RETURN,
+          referenceId: ret.id,
+          description: `Sale return refund (sale ${ret.saleId})`,
+          createdById: opts.createdById ?? ret.approvedById,
+        });
+      }
+
       return tx.saleReturn.update({
         where: { id },
         data: { status: 'COMPLETED' },

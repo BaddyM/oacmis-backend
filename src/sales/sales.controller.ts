@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Req, UseGuards } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { CreateMultipleSaleDto, CreditSalePaymentDto, UpdateCreditSaleDto, UpdateCreditSalePaymentDto } from './dto/create-sale.dto';
 import { CreateReturnDto } from './dto/return.dto';
@@ -91,7 +91,14 @@ export class SalesController {
 
     @Patch("returns/:id/complete")
     @ApiParam({ name: "id" })
-    complete_return(@Param("id") id: string) {
-        return this.salesService.complete_return(id);
+    complete_return(
+        @Req() req: any,
+        @Param("id") id: string,
+        @Body() body: { cashAccountId?: string } = {},
+    ) {
+        return this.salesService.complete_return(id, {
+            cashAccountId: body?.cashAccountId,
+            createdById: req?.user?.userId ?? req?.user?.id,
+        });
     }
 }
