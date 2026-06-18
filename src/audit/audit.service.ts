@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -38,58 +38,5 @@ export class AuditService {
     });
     const total = await this.prisma.auditLog.count({ where });
     return { data, totalPages: Math.ceil(total / limit) };
-  }
-
-  // Period locks
-  async lock_period(period: string, lockedById: string, note?: string) {
-    const existing = await this.prisma.periodLock.findUnique({
-      where: { period },
-    });
-    if (existing) {
-      throw new InternalServerErrorException('Period already locked');
-    }
-    const lock = await this.prisma.periodLock.create({
-      data: { period, lockedById, note },
-    });
-    await this.log({
-      userId: lockedById,
-      action: 'LOCK',
-      entity: 'PeriodLock',
-      entityId: lock.id,
-      after: { period, note },
-    });
-    return lock;
-  }
-
-  async unlock_period(id: string, userId: string) {
-    const lock = await this.prisma.periodLock.findUnique({ where: { id } });
-    if (!lock) {
-      throw new InternalServerErrorException('Period lock not found');
-    }
-    await this.prisma.periodLock.delete({ where: { id } });
-    await this.log({
-      userId,
-      action: 'UNLOCK',
-      entity: 'PeriodLock',
-      entityId: id,
-      before: { period: lock.period },
-    });
-    return { ok: true };
-  }
-
-  async list_period_locks() {
-    return this.prisma.periodLock.findMany({
-      include: {
-        lockedBy: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: { lockedAt: 'desc' },
-    });
-  }
-
-  async is_locked(period: string) {
-    const lock = await this.prisma.periodLock.findUnique({
-      where: { period },
-    });
-    return { locked: !!lock };
   }
 }

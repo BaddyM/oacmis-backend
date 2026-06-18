@@ -1,0 +1,37 @@
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { AuthGuard } from 'src/auth/auth.guard';
+import { ResourcesService } from './resources.service';
+import { CreateResourceDto, UpdateResourceDto } from './resources.dto';
+
+@ApiBearerAuth()
+@UseGuards(AuthGuard)
+@Controller('resources')
+export class ResourcesController {
+    constructor(private readonly service: ResourcesService) { }
+
+    @Post()
+    create(@Body() dto: CreateResourceDto) {
+        return this.service.create(dto);
+    }
+
+    @Get()
+    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
+        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 200, search);
+    }
+
+    @Get(':id')
+    findOne(@Param('id') id: string) {
+        return this.service.findOne(id);
+    }
+
+    @Patch(':id')
+    update(@Param('id') id: string, @Body() dto: UpdateResourceDto) {
+        return this.service.update(id, dto);
+    }
+
+    @Delete(':id')
+    remove(@Param('id') id: string) {
+        return this.service.remove(id);
+    }
+}

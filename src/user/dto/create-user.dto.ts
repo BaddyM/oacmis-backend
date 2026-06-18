@@ -1,12 +1,12 @@
-import { ApiProperty, PartialType } from "@nestjs/swagger";
-import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
+import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export enum UserRole {
     admin = "admin",
-    cashier = "cashier",
-    office = "office",
-    sales_rep = "sales_rep",
-    production = "production",
+    teacher = "teacher",
+    student = "student",
+    parent = "parent",
+    staff = "staff",
 }
 
 export class CreateUserDto {
@@ -30,11 +30,6 @@ export class CreateUserDto {
     @IsNotEmpty()
     password!: string;
 
-    @ApiProperty({ name: "branchId", type: "string" })
-    @IsString()
-    @IsOptional()
-    branchId?: string;
-
     @ApiProperty({ name: "role" })
     @IsEnum(UserRole, { message: "Please add a valid role." })
     @IsNotEmpty()
@@ -44,47 +39,4 @@ export class CreateUserDto {
     @IsBoolean()
     @IsOptional()
     isActive?: boolean;
-
-    @ApiProperty({ name: "commissionRate", type: "number", required: false })
-    @IsOptional()
-    commissionRate?: number;
 }
-
-export class CustomerDto {
-    @ApiProperty({ name: "name", type: "string", example: "john" })
-    @IsString()
-    @IsNotEmpty()
-    name!: string;
-
-    @ApiProperty({ name: "email", type: "string", required: false })
-    @ValidateIf((o) => o.email !== undefined && o.email !== '')
-    @IsEmail()
-    @IsOptional()
-    email?: string;
-
-    @ApiProperty({ name: "phoneNumber", type: "string", required: false })
-    @IsString()
-    @IsOptional()
-    phoneNumber?: string;
-
-    @ApiProperty({ name: "address", type: "string", example: "kampala", required: false })
-    @IsString()
-    @IsOptional()
-    address?: string;
-
-    @ApiProperty({ name: "branchId", type: "string", required: false })
-    @IsString()
-    @IsOptional()
-    branchId?: string;
-
-    @ApiProperty({ name: "creditLimit", type: "number", required: false })
-    @IsOptional()
-    creditLimit?: number;
-
-    @ApiProperty({ name: "isDeleted", type: "boolean" })
-    @IsBoolean()
-    @IsOptional()
-    isDeleted?: boolean;
-}
-
-export class UpdateCustomerDto extends PartialType(CustomerDto) { }

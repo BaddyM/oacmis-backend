@@ -1,91 +1,62 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Req } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    Patch,
+    Post,
+    Query,
+    UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { AuthGuard } from 'src/auth/auth.guard';
 import { StaffService } from './staff.service';
-import { CreateSalaryAdvanceDto, CreateSalaryDto, CreateStaffDto, UpdateSalaryDto } from './dto/create-staff.dto';
+import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
-import { ApiQuery } from '@nestjs/swagger';
 
+@ApiBearerAuth()
+@UseGuards(AuthGuard)
 @Controller('staff')
 export class StaffController {
     constructor(private readonly staffService: StaffService) { }
 
     @Post()
-    create(@Body() createStaffDto: CreateStaffDto) {
-        return this.staffService.create(createStaffDto);
+    create(@Body() dto: CreateStaffDto) {
+        return this.staffService.create(dto);
     }
 
     @Get()
-    @ApiQuery({ name: "page" })
-    @ApiQuery({ name: "limit" })
-    findAll(@Query("page") page: string, @Query("limit") limit: string) {
-        return this.staffService.findAll(parseInt(page), parseInt(limit));
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
+    @ApiQuery({ name: 'search', required: false })
+    findAll(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('search') search?: string,
+    ) {
+        return this.staffService.findAll(
+            page ? parseInt(page) : 1,
+            limit ? parseInt(limit) : 20,
+            search,
+        );
+    }
+
+    @Get(':id')
+    @ApiParam({ name: 'id' })
+    findOne(@Param('id') id: string) {
+        return this.staffService.findOne(id);
     }
 
     @Patch(':id')
-    update(@Param('id') id: string, @Body() updateStaffDto: UpdateStaffDto) {
-        return this.staffService.update(id, updateStaffDto);
+    @ApiParam({ name: 'id' })
+    update(@Param('id') id: string, @Body() dto: UpdateStaffDto) {
+        return this.staffService.update(id, dto);
     }
 
     @Delete(':id')
+    @ApiParam({ name: 'id' })
     remove(@Param('id') id: string) {
         return this.staffService.remove(id);
-    }
-
-    //Staff
-    @Post("salary/create")
-    create_salary(@Body() createSalaryDto: CreateSalaryDto) {
-        return this.staffService.create_salary(createSalaryDto);
-    }
-
-    @Get("salary/list")
-    @ApiQuery({ name: "page" })
-    @ApiQuery({ name: "limit" })
-    @ApiQuery({ name: "period", required: false })
-    @ApiQuery({ name: "staffId", required: false })
-    fetch_salary(@Query("page") page: string, @Query("limit") limit: string, @Query("period") period: string, @Query("staffId") staffId: string) {
-        return this.staffService.fetch_salary(parseInt(page), parseInt(limit), period, staffId);
-    }
-
-    @Patch('salary/update/:id')
-    update_salary(@Param('id') id: string, @Body() updateSalaryDto: UpdateSalaryDto) {
-        return this.staffService.update_salary(id, updateSalaryDto);
-    }
-
-    @Delete('salary/delete/:id')
-    remove_salary(@Param('id') id: string) {
-        return this.staffService.delete_salary(id);
-    }
-
-    @Patch('salary/:id/paid')
-    mark_salary_paid(
-        @Req() req: any,
-        @Param('id') id: string,
-        @Body() body: { cashAccountId?: string } = {},
-    ) {
-        return this.staffService.mark_salary_paid(id, {
-            cashAccountId: body?.cashAccountId,
-            createdById: req?.user?.userId ?? req?.user?.id,
-        });
-    }
-
-    @Get('salary/:id/payslip')
-    generate_payslip(@Param('id') id: string) {
-        return this.staffService.generate_payslip(id);
-    }
-
-    //Salary Advances
-    @Post('advance/create')
-    create_advance(@Body() dto: CreateSalaryAdvanceDto) {
-        return this.staffService.create_salary_advance(dto);
-    }
-
-    @Get('advance/list')
-    @ApiQuery({ name: 'staffId', required: false })
-    list_advances(@Query('staffId') staffId?: string) {
-        return this.staffService.list_salary_advances(staffId);
-    }
-
-    @Patch('advance/:id/repay')
-    repay_advance(@Param('id') id: string) {
-        return this.staffService.repay_salary_advance(id);
     }
 }

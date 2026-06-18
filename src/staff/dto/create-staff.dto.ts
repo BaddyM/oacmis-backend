@@ -1,116 +1,99 @@
-import { ApiProperty, PartialType } from "@nestjs/swagger";
-import { SalaryStatus } from "@prisma/client";
-import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+    IsBoolean,
+    IsEmail,
+    IsNotEmpty,
+    IsObject,
+    IsOptional,
+    IsString,
+    ValidateIf,
+    ValidateNested,
+} from 'class-validator';
+
+export class SocialsDto {
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    website?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    linkedin?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    twitter?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    facebook?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    instagram?: string;
+}
 
 export class CreateStaffDto {
-    @ApiProperty()
+    @ApiProperty({ example: 'Sarah' })
     @IsString()
     @IsNotEmpty()
-    name!: string;
+    firstName!: string;
 
-    @ApiProperty()
+    @ApiProperty({ example: 'Johnson' })
     @IsString()
     @IsNotEmpty()
-    phone!: string;
+    lastName!: string;
 
-    @ApiProperty()
-    @IsEmail()
-    @IsOptional()
-    email?: string;
-
-    @ApiProperty()
-    @IsString()
-    @IsOptional()
-    address?: string;
-
-    @ApiProperty()
+    @ApiProperty({ example: 'Teacher' })
     @IsString()
     @IsNotEmpty()
     role!: string;
 
-    @ApiProperty()
-    @IsNumber()
-    @IsNotEmpty()
-    baseSalary!: number;
-
-    @ApiProperty()
-    @IsString()
-    @IsNotEmpty()
-    branchId!: string;
-}
-
-export class CreateSalaryDto {
-    @ApiProperty()
-    @IsString()
-    @IsNotEmpty()
-    staffId!: string;
-
-    @ApiProperty()
-    @IsString()
-    @IsNotEmpty()
-    userId!: string;
-
-    @ApiProperty()
-    @IsString()
-    @IsNotEmpty()
-    period!: string;
-
-    @ApiProperty()
-    @IsNumber()
-    @IsNotEmpty()
-    amount!: number;
-
-    @ApiProperty()
-    @IsEnum(SalaryStatus, { message: "Please select the correct status" })
-    @IsOptional()
-    status?: SalaryStatus;
-
     @ApiProperty({ required: false })
-    @IsNumber()
-    @IsOptional()
-    allowances?: number;
-
-    @ApiProperty({ required: false })
-    @IsNumber()
-    @IsOptional()
-    deductions?: number;
-
-    @ApiProperty({ required: false })
-    @IsNumber()
-    @IsOptional()
-    advanceDeducted?: number;
-
-    @ApiProperty()
     @IsString()
     @IsOptional()
-    memo?: string;
+    address?: string;
 
     @ApiProperty({ required: false })
     @IsString()
     @IsOptional()
-    cashAccountId?: string;
-}
+    phone?: string;
 
-export class UpdateSalaryDto extends PartialType(CreateSalaryDto) { }
+    @ApiProperty({ required: false })
+    @ValidateIf((o) => o.email !== undefined && o.email !== '')
+    @IsEmail()
+    @IsOptional()
+    email?: string;
 
-export class CreateSalaryAdvanceDto {
-    @ApiProperty()
+    @ApiProperty({ required: false, description: 'Kept as a string to match the frontend form' })
     @IsString()
-    @IsNotEmpty()
-    staffId!: string;
+    @IsOptional()
+    salary?: string;
 
-    @ApiProperty()
-    @IsNumber()
-    @IsNotEmpty()
-    amount!: number;
+    @ApiProperty({ required: false, default: true })
+    @IsBoolean()
+    @IsOptional()
+    isActive?: boolean;
 
     @ApiProperty({ required: false })
     @IsString()
     @IsOptional()
-    reason?: string;
+    profileImage?: string;
 
     @ApiProperty({ required: false })
     @IsString()
     @IsOptional()
-    cashAccountId?: string;
+    banner?: string;
+
+    @ApiProperty({ required: false, type: SocialsDto })
+    @IsObject()
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => SocialsDto)
+    socials?: SocialsDto;
 }

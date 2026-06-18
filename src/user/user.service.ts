@@ -1,63 +1,36 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
-import { CreateUserDto, CustomerDto, UpdateCustomerDto } from './dto/create-user.dto';
+import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { LedgerSource } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditService } from 'src/audit/audit.service';
-import { LedgerService } from 'src/cash-account/ledger.service';
 const bcrypt = require("bcryptjs");
+
+const userSelect = {
+    id: true,
+    name: true,
+    email: true,
+    isActive: true,
+    role: true,
+    createdAt: true,
+    updatedAt: true,
+} as const;
 
 @Injectable()
 export class UserService {
     constructor(
         private prisma: PrismaService,
         private readonly auditService: AuditService,
-        private readonly ledger: LedgerService,
     ) { }
 
     async create(createUserDto: CreateUserDto) {
         const password = await bcrypt.hash(`${createUserDto.password}`, 10);
-        const { branchId, ...otherData } = createUserDto;
-        const normalizedBranchId = branchId?.trim();
 
-        if (normalizedBranchId) {
-            const branch = await this.prisma.branch.findUnique({
-                where: { id: normalizedBranchId },
-                select: { id: true },
-            });
-
-            if (!branch) {
-                throw new BadRequestException('Selected branch does not exist');
-            }
-        }
-
-        const userData: any = {
-            ...otherData,
-            password,
-        };
-        if (normalizedBranchId) {
-            userData.branchId = normalizedBranchId;
-        }
         const data = await this.prisma.user.create({
-            data: userData,
-            select: {
-                id: true,
-                name: true,
-                branchId: true,
-                branch: {
-                    select: {
-                        name: true,
-                        address: true,
-                        contact: true,
-                    }
-                },
-                email: true,
-                isActive: true,
-                role: true,
-                commissionRate: true,
-                createdAt: true,
-                updatedAt: true,
-            }
+            data: {
+                ...createUserDto,
+                password,
+            },
+            select: userSelect,
         });
 
         await this.auditService.log({
@@ -87,13 +60,6 @@ export class UserService {
                     select: {
                         name: true,
                         email: true,
-                        branch: {
-                            select: {
-                                name: true,
-                                address: true,
-                                contact: true,
-                            }
-                        },
                     }
                 },
                 createdAt: true,
@@ -116,24 +82,7 @@ export class UserService {
         }
 
         const data = await this.prisma.user.findMany({
-            select: {
-                id: true,
-                name: true,
-                branchId: true,
-                branch: {
-                    select: {
-                        name: true,
-                        address: true,
-                        contact: true,
-                    }
-                },
-                email: true,
-                isActive: true,
-                role: true,
-                commissionRate: true,
-                createdAt: true,
-                updatedAt: true,
-            },
+            select: userSelect,
             where: {
                 ...filter
             },
@@ -153,93 +102,32 @@ export class UserService {
             where: {
                 id: userId,
             },
-            select: {
-                id: true,
-                name: true,
-                branchId: true,
-                branch: {
-                    select: {
-                        name: true,
-                        address: true,
-                        contact: true,
-                    }
-                },
-                email: true,
-                isActive: true,
-                role: true,
-                commissionRate: true,
-                createdAt: true,
-                updatedAt: true,
-            }
+            select: userSelect,
         });
         return data;
     }
 
     async update(userId: string, updateUserDto: UpdateUserDto) {
         // 1. Destructure the password out of the DTO
-        const { password, branchId, ...otherData } = updateUserDto;
-        const normalizedBranchId = branchId?.trim();
-
-        if (branchId !== undefined) {
-            if (normalizedBranchId) {
-                const branch = await this.prisma.branch.findUnique({
-                    where: { id: normalizedBranchId },
-                    select: { id: true },
-                });
-
-                if (!branch) {
-                    throw new BadRequestException('Selected branch does not exist');
-                }
-            }
-        }
+        const { password, ...otherData } = updateUserDto;
 
         // 2. Prepare the update data object
         const updateData: any = { ...otherData };
-
-        if (branchId !== undefined) {
-            updateData.branchId = normalizedBranchId || null;
-        }
 
         // 3. Conditionally hash and add the password if it exists
         if (password) {
             updateData.password = await bcrypt.hash(`${password}`, 10);
         }
 
-        // 4. Perform a single Prisma call
         const before = await this.prisma.user.findUnique({
             where: { id: userId },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                branchId: true,
-                isActive: true,
-                commissionRate: true,
-            },
+            select: userSelect,
         });
 
         const data = await this.prisma.user.update({
             where: { id: userId },
             data: updateData,
-            select: {
-                id: true,
-                name: true,
-                branchId: true,
-                branch: {
-                    select: {
-                        name: true,
-                        address: true,
-                        contact: true,
-                    }
-                },
-                email: true,
-                isActive: true,
-                role: true,
-                commissionRate: true,
-                createdAt: true,
-                updatedAt: true,
-            }
+            select: userSelect,
         });
 
         await this.auditService.log({
@@ -256,39 +144,14 @@ export class UserService {
     async remove(userId: string) {
         const before = await this.prisma.user.findUnique({
             where: { id: userId },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                branchId: true,
-                isActive: true,
-                commissionRate: true,
-            },
+            select: userSelect,
         });
 
         const data = await this.prisma.user.delete({
             where: {
                 id: userId,
             },
-            select: {
-                id: true,
-                name: true,
-                branchId: true,
-                branch: {
-                    select: {
-                        name: true,
-                        address: true,
-                        contact: true,
-                    }
-                },
-                email: true,
-                isActive: true,
-                role: true,
-                commissionRate: true,
-                createdAt: true,
-                updatedAt: true,
-            }
+            select: userSelect,
         });
 
         await this.auditService.log({
@@ -299,166 +162,5 @@ export class UserService {
         });
 
         return data;
-    }
-
-    //Customer
-    async create_customer(customerDto: CustomerDto) {
-        // Only name is mandatory; coerce blank optional fields to null.
-        const data = await this.prisma.customer.create({
-            data: {
-                ...customerDto,
-                email: customerDto.email || null,
-                phoneNumber: customerDto.phoneNumber || null,
-                address: customerDto.address || null,
-                branchId: customerDto.branchId || null,
-            },
-        });
-
-        await this.auditService.log({
-            action: 'CUSTOMER_CREATED',
-            entity: 'Customer',
-            entityId: data.id,
-            after: data,
-        });
-
-        return data;
-    }
-
-    async get_customers(page: number, limit: number) {
-        const data = await this.prisma.customer.findMany({
-            orderBy: { createdAt: "desc" },
-            skip: (page - 1) * limit,
-            take: limit,
-        });
-        const total = await this.prisma.customer.count();
-        const totalPages = Math.ceil(total / limit);
-        return { data, totalPages };
-    }
-
-    async update_customer(id: string, updateCustomerDto: UpdateCustomerDto) {
-        const before = await this.prisma.customer.findUnique({ where: { id } });
-        // Coerce blank optional fields to null so they can be cleared on update.
-        const { email, phoneNumber, address, branchId, ...rest } = updateCustomerDto;
-        const data = await this.prisma.customer.update({
-            where: { id },
-            data: {
-                ...rest,
-                ...(email !== undefined ? { email: email || null } : {}),
-                ...(phoneNumber !== undefined ? { phoneNumber: phoneNumber || null } : {}),
-                ...(address !== undefined ? { address: address || null } : {}),
-                ...(branchId !== undefined ? { branchId: branchId || null } : {}),
-            },
-        });
-
-        await this.auditService.log({
-            action: 'CUSTOMER_UPDATED',
-            entity: 'Customer',
-            entityId: id,
-            before,
-            after: data,
-        });
-
-        return data;
-    }
-
-    //Commissions
-    async compute_commission(userId: string, period: string) {
-        // period format: YYYY-MM
-        const [year, month] = period.split('-').map(Number);
-        if (!year || !month) {
-            throw new InternalServerErrorException('Invalid period (use YYYY-MM)');
-        }
-        const start = new Date(year, month - 1, 1);
-        const end = new Date(year, month, 1);
-
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { id: true, name: true, commissionRate: true },
-        });
-        if (!user) {
-            throw new InternalServerErrorException('User not found');
-        }
-
-        const sales = await this.prisma.sale.findMany({
-            where: {
-                repId: userId,
-                createdAt: { gte: start, lt: end },
-            },
-            include: { returns: true },
-        });
-
-        let totalSales = 0;
-        for (const s of sales) {
-            const grossLine = s.unitPrice * s.quantity;
-            const refundedAmount = s.returns
-                .filter((r) => r.status === 'COMPLETED')
-                .reduce((acc, r) => acc + r.refundAmount, 0);
-            totalSales += grossLine - refundedAmount;
-        }
-        const totalCommission = totalSales * ((user.commissionRate ?? 0) / 100);
-        return {
-            user,
-            period,
-            totalSales,
-            totalCommission,
-            commissionRate: ((user.commissionRate ?? 0) / 100),
-        };
-    }
-
-    async create_commission_payout(userId: string, period: string) {
-        const summary = await this.compute_commission(userId, period);
-        const existing = await this.prisma.commissionPayout.findFirst({
-            where: { userId, period },
-        });
-        if (existing) {
-            throw new InternalServerErrorException(
-                'Commission payout for this period already exists',
-            );
-        }
-        return this.prisma.commissionPayout.create({
-            data: {
-                userId,
-                period,
-                totalSales: summary.totalSales,
-                totalCommission: summary.totalCommission,
-            },
-        });
-    }
-
-    async list_commission_payouts(userId?: string, period?: string) {
-        const where: any = {};
-        if (userId) where.userId = userId;
-        if (period) where.period = period;
-        return this.prisma.commissionPayout.findMany({
-            where,
-            include: {
-                user: { select: { id: true, name: true, email: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
-    }
-
-    async mark_commission_paid(
-        id: string,
-        opts: { cashAccountId?: string; createdById?: string } = {},
-    ) {
-        const existing = await this.prisma.commissionPayout.findUnique({ where: { id } });
-        if (!existing) throw new InternalServerErrorException('Commission payout not found');
-        const updated = await this.prisma.commissionPayout.update({
-            where: { id },
-            data: { status: 'PAID', paidAt: new Date() },
-        });
-        if (opts.cashAccountId && existing.status !== 'PAID' && updated.totalCommission > 0) {
-            await this.ledger.writeStandalone({
-                accountId: opts.cashAccountId,
-                amount: -Number(updated.totalCommission),
-                occurredAt: new Date(),
-                source: LedgerSource.COMMISSION_PAYOUT,
-                referenceId: updated.id,
-                description: `Commission payout (${updated.period})`,
-                createdById: opts.createdById,
-            });
-        }
-        return updated;
     }
 }

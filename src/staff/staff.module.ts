@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { StaffService } from './staff.service';
 import { StaffController } from './staff.controller';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CashAccountModule } from 'src/cash-account/cash-account.module';
+import { JwtService } from '@nestjs/jwt';
+import { AuditModule } from 'src/audit/audit.module';
 
 @Module({
-  imports: [CashAccountModule],
+  imports: [AuditModule],
   controllers: [StaffController],
-  providers: [StaffService, PrismaService],
+  providers: [StaffService, PrismaService, JwtService],
+  exports: [StaffService],
 })
 export class StaffModule {}

@@ -7,54 +7,18 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
+// ============================================================
+// Generic core models — reusable shell for the OACMIS
+// school-management frontend. Domain models (students,
+// teachers, classes, attendance, fees, etc.) are added on top.
+// ============================================================
+
 enum UserRole {
     admin
-    cashier
-    office
-    sales_rep
-    production
-}
-
-enum ProductCategory {
-    exams
-    workbooks
-    holiday_packages
-}
-
-enum HolidayType {
-    NEWS
-    BOND
-    AMAZON
-}
-
-enum ExamType {
-    JUBRA
-    AMAZON
-}
-
-enum ExamTerm {
-    TERM_1
-    TERM_2
-    TERM_3
-}
-
-enum ExamPeriod {
-    BEGINNING
-    MID
-    END
-}
-
-enum ProductionStatus {
-    EXPECTED
-    PRINTED
-    REVERTED
-}
-
-enum ExpenseCategory {
-    transport
-    meals
-    supplies
-    other
+    teacher
+    student
+    parent
+    staff
 }
 
 enum NotificationType {
@@ -64,73 +28,22 @@ enum NotificationType {
     error
 }
 
-enum StockTakeStatus {
-    active
-    completed
-}
-
-enum SaleItemType {
-    PRODUCT
-    CUSTOM
-}
-
-model Branch {
-    id              String           @id @default(uuid())
-    name            String           @unique
-    address         String?
-    contact         String?
-    isActive        Boolean          @default(false)
-    isMainBranch    Boolean          @default(false)
-    createdAt       DateTime         @default(now())
-    updatedAt       DateTime         @default(now()) @updatedAt
-    users           User[]
-    receipts        Receipt[]
-    customers       Customer[]
-    dailyReports    DailyReport[]
-    staff           Staff[]
-    branchStocks    BranchStock[]
-    productions     Production[]
-    branchPayables  BranchPayable[]
-    branchDeposits  BranchDeposit[]
-    transfersFrom   StockTransfer[]  @relation("TransferFromBranch")
-    transfersTo     StockTransfer[]  @relation("TransferToBranch")
-    cashAccounts    CashAccount[]
-}
-
 model User {
-    id                  String          @id @default(uuid())
+    id                  String               @id @default(uuid())
     name                String
-    email               String          @unique
+    email               String               @unique
     accessToken         String?
     password            String
     role                UserRole
-    isActive            Boolean         @default(false)
-    branchId            String?
-    createdAt           DateTime        @default(now())
-    updatedAt           DateTime        @default(now()) @updatedAt
-    branch              Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
-    sales               Sale[]
-    receipts            Receipt[]
-    expenses            Expense[]
-    productions         Production[]
-    targetNotifications Notification[]  @relation("TargetUser")
-    loginAccesses       LoginAccess[]
-    creditSales         CreditSale[]
-    creditPayments      CreditPayment[]
-    dailyReports        DailyReport[]
-    settings            Settings[]
-    salaries            Salary[]
-    stockTakeItems      StockTakeItem[]
-    stockTransfers      StockTransfer[]
-    approvedReturns     SaleReturn[]       @relation("ApprovedReturns")
-    commissionRate      Float              @default(0)
-    commissionPayouts   CommissionPayout[]
-    auditLogs           AuditLog[]
-    periodLocks         PeriodLock[]
-    invoices            Invoice[]
-    invoicePayments     InvoicePayment[]
+    isActive            Boolean              @default(false)
     failedLoginCount    Int                  @default(0)
     lockedUntil         DateTime?
+    createdAt           DateTime             @default(now())
+    updatedAt           DateTime             @default(now()) @updatedAt
+    targetNotifications Notification[]       @relation("TargetUser")
+    loginAccesses       LoginAccess[]
+    auditLogs           AuditLog[]
+    settings            Settings[]
     passwordResetTokens PasswordResetToken[]
 }
 
@@ -144,6 +57,14 @@ model PasswordResetToken {
     createdAt DateTime  @default(now())
 
     @@index([userId])
+}
+
+model LoginAccess {
+    id        String   @id @default(uuid())
+    userId    String
+    user      User     @relation(fields: [userId], references: [id])
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 model AuditLog {
@@ -162,360 +83,6 @@ model AuditLog {
     @@index([createdAt])
 }
 
-model PeriodLock {
-    id          String   @id @default(uuid())
-    period      String   @unique
-    lockedAt    DateTime @default(now())
-    lockedById  String
-    lockedBy    User     @relation(fields: [lockedById], references: [id])
-    note        String?  @db.LongText
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
-}
-
-enum CommissionPayoutStatus {
-    PENDING
-    PAID
-    CANCELLED
-}
-
-model CommissionPayout {
-    id              String                 @id @default(uuid())
-    userId          String
-    user            User                   @relation(fields: [userId], references: [id])
-    period          String
-    totalSales      Float
-    totalCommission Float
-    status          CommissionPayoutStatus @default(PENDING)
-    paidAt          DateTime?
-    notes           String?                @db.LongText
-    createdAt       DateTime               @default(now())
-    updatedAt       DateTime               @default(now()) @updatedAt
-
-    @@index([userId])
-}
-
-model Customer {
-    id          String       @id @default(uuid())
-    name        String
-    email       String?
-    phoneNumber String?
-    address     String?
-    branchId    String?
-    creditLimit Float        @default(0)
-    isDeleted   Boolean      @default(false)
-    branch      Branch?      @relation(fields: [branchId], references: [id])
-    createdAt   DateTime     @default(now())
-    updatedAt   DateTime     @default(now()) @updatedAt
-    sales       Sale[]
-    creditSales CreditSale[]
-    invoices    Invoice[]
-    invoiceLinks CustomerInvoice[]
-}
-
-model DailyReport {
-    id        String   @id @default(uuid())
-    branchId  String
-    branch    Branch   @relation(fields: [branchId], references: [id])
-    notes     String   @db.LongText
-    userId    String
-    user      User     @relation(fields: [userId], references: [id])
-    isDeleted Boolean  @default(false)
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
-}
-
-model LoginAccess {
-    id        String   @id @default(uuid())
-    userId    String
-    user      User     @relation(fields: [userId], references: [id])
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
-}
-
-model Product {
-    id             String          @id @default(uuid())
-    category       ProductCategory
-    holidayType    HolidayType?
-    examType       ExamType?
-    examSet        String?
-    name           String          @default("")
-    description    String?         @db.Text
-    image          String?
-    featured       Boolean         @default(false)
-    isPublished    Boolean         @default(false)
-    slug           String?         @unique
-    price          Float
-    costPrice      Float           @default(0)
-    reorderLevel   Int             @default(0)
-    totalStock     Int
-    classLevel     String?
-    subject        String?
-    createdAt      DateTime        @default(now())
-    updatedAt      DateTime        @default(now()) @updatedAt
-    stockTakeItems StockTakeItem[]
-    sales          Sale[]
-    branchStocks   BranchStock[]
-    productions    Production[]
-    stockTransfers StockTransfer[]
-    invoiceItems   InvoiceItem[]
-}
-
-model Production {
-    id              String           @id @default(uuid())
-    productId       String
-    branchId        String
-    quantity        Int
-    printedQuantity Int?
-    status          ProductionStatus @default(PRINTED)
-    // Optional subject for per-subject exam production tracking. When set, the
-    // run is a tracking/reporting record only and does NOT move sellable stock;
-    // sellable stock is registered with subject-less (complete-set) runs.
-    subject         String?
-    term            ExamTerm?
-    period          ExamPeriod?
-    printedAt       DateTime?
-    note            String?          @db.LongText
-    createdById     String?
-    createdAt       DateTime         @default(now())
-    updatedAt       DateTime         @default(now()) @updatedAt
-    product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-    branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
-    createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-
-    @@index([productId])
-    @@index([branchId])
-    @@index([createdById])
-    @@index([createdAt])
-}
-
-model BranchStock {
-    id        String   @id @default(uuid())
-    branchId  String
-    productId String
-    quantity  Int      @default(0)
-    branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-    product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
-
-    @@unique([branchId, productId])
-    @@index([productId])
-}
-
-enum StockTransferStatus {
-    PENDING
-    COMPLETED
-    CANCELLED
-}
-
-model StockTransfer {
-    id           String              @id @default(uuid())
-    fromBranchId String
-    toBranchId   String
-    productId    String
-    quantity     Int
-    status       StockTransferStatus @default(PENDING)
-    notes        String?             @db.LongText
-    createdById  String
-    // User who confirmed receipt (receiving-branch office or admin). Scalar only —
-    // no relation, to avoid a second named User relation on this model.
-    completedById String?
-    completedAt  DateTime?
-    createdAt    DateTime            @default(now())
-    updatedAt    DateTime            @default(now()) @updatedAt
-    fromBranch   Branch              @relation("TransferFromBranch", fields: [fromBranchId], references: [id])
-    toBranch     Branch              @relation("TransferToBranch", fields: [toBranchId], references: [id])
-    product      Product             @relation(fields: [productId], references: [id])
-    createdBy    User                @relation(fields: [createdById], references: [id])
-    payables     BranchPayable[]
-
-    @@index([fromBranchId])
-    @@index([toBranchId])
-    @@index([productId])
-    @@index([createdById])
-}
-
-enum PayableStatus {
-    OPEN
-    PARTIALLY_PAID
-    PAID
-    CANCELLED
-}
-
-model BranchPayable {
-    id            String        @id @default(uuid())
-    branchId      String
-    stockTransferId String? 
-    description   String?       @db.LongText
-    totalAmount   Float
-    outstanding   Float
-    status        PayableStatus @default(OPEN)
-    createdById   String?
-    deposits      BranchDeposit[]
-    createdAt     DateTime      @default(now())
-    updatedAt     DateTime      @default(now()) @updatedAt
-
-    branch        Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
-    stockTransfer StockTransfer? @relation(fields: [stockTransferId], references: [id], onDelete: SetNull)
-
-    @@index([branchId])
-    @@index([stockTransferId])
-}
-
-model BranchDeposit {
-    id            String        @id @default(uuid())
-    payableId     String
-    branchId      String
-    amount        Float
-    paymentMethod PaymentMethod @default(CASH)
-    reference     String?
-    recordedById  String?
-    createdAt     DateTime      @default(now())
-
-    payable       BranchPayable @relation(fields: [payableId], references: [id], onDelete: Cascade)
-    branch        Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
-
-    @@index([payableId])
-    @@index([branchId])
-}
-
-model StockTakeItem {
-    id                     String                 @id @default(uuid())
-    userId                 String
-    user                   User                   @relation(fields: [userId], references: [id])
-    productId              String
-    quantityTaken          Int
-    quantitySold           Int                    @default(0)
-    quantityReturned       Int                    @default(0)
-    revenue                Float                  @default(0)
-    product                Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
-    createdAt              DateTime               @default(now())
-    updatedAt              DateTime               @default(now()) @updatedAt
-    stockTakeItemHistories StockTakeItemHistory[]
-
-    @@unique([userId, productId])
-}
-
-model StockTakeItemHistory {
-    id              String        @id @default(uuid())
-    stockTakeItemId String
-    stockTakeItem   StockTakeItem @relation(fields: [stockTakeItemId], references: [id])
-    createdAt       DateTime      @default(now())
-    updatedAt       DateTime      @default(now()) @updatedAt
-}
-
-model Sale {
-    id               String         @id @default(uuid())
-    orderId          String
-    repId            String
-    stockTakeId      String?
-    productId        String?
-    itemName         String
-    itemType         SaleItemType   @default(PRODUCT)
-    quantity         Int
-    customerId       String?
-    customer         Customer?      @relation(fields: [customerId], references: [id])
-    unitPrice        Float
-    unitCost         Float          @default(0)
-    memo             String?        @db.LongText
-    onCredit         Boolean        @default(false)
-    paymentMethod    PaymentMethod?
-    paymentReference String?
-    createdAt        DateTime       @default(now())
-    updatedAt        DateTime       @default(now()) @updatedAt
-    rep              User           @relation(fields: [repId], references: [id], onDelete: Cascade)
-    product          Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
-    receipts         Receipt[]
-    returns          SaleReturn[]
-
-    @@index([productId])
-}
-
-enum ReturnStatus {
-    PENDING
-    COMPLETED
-    CANCELLED
-}
-
-model SaleReturn {
-    id           String        @id @default(uuid())
-    saleId       String
-    sale         Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
-    quantity     Int
-    refundAmount Float
-    reason       String?       @db.LongText
-    refundMethod PaymentMethod @default(CASH)
-    status       ReturnStatus  @default(PENDING)
-    approvedById String
-    approvedBy   User          @relation("ApprovedReturns", fields: [approvedById], references: [id])
-    createdAt    DateTime      @default(now())
-    updatedAt    DateTime      @default(now()) @updatedAt
-
-    @@index([saleId])
-}
-
-model CreditSale {
-    id             String           @id @default(uuid())
-    orderId        String
-    amount         Float
-    userId         String
-    customerId     String?
-    customer       Customer?        @relation(fields: [customerId], references: [id])
-    user           User             @relation(fields: [userId], references: [id])
-    isDeleted      Boolean          @default(false)
-    status         CreditSaleStatus @default(PENDING)
-    createdAt      DateTime         @default(now())
-    updatedAt      DateTime         @default(now()) @updatedAt
-    creditPayments CreditPayment[]
-
-    @@index([customerId])
-}
-
-enum CreditSaleStatus {
-    PENDING
-    COMPLETED
-    CANCELLED
-}
-
-model CreditPayment {
-    id            String        @id @default(uuid())
-    creditSaleId  String
-    creditSale    CreditSale    @relation(fields: [creditSaleId], references: [id])
-    paid          Float
-    userId        String
-    user          User          @relation(fields: [userId], references: [id])
-    paymentMethod PaymentMethod @default(CASH)
-    reference     String?
-    createdAt     DateTime      @default(now())
-    updatedAt     DateTime      @default(now()) @updatedAt
-}
-
-model Receipt {
-    id        String   @id @default(uuid())
-    saleId    String
-    repId     String
-    branchId  String
-    image     String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
-    verified  Boolean  @default(false)
-    sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-    rep       User     @relation(fields: [repId], references: [id], onDelete: Cascade)
-    branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-}
-
-model Expense {
-    id          String          @id @default(uuid())
-    userId      String
-    description String?
-    amount      Float
-    category    ExpenseCategory
-    createdAt   DateTime        @default(now())
-    updatedAt   DateTime        @default(now()) @updatedAt
-    user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
 model Notification {
     id           String           @id @default(uuid())
     title        String
@@ -528,67 +95,6 @@ model Notification {
     targetUser   User?            @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
 }
 
-model Staff {
-    id         String           @id @default(uuid())
-    name       String
-    phone      String
-    email      String?
-    address    String?
-    role       String
-    baseSalary Float
-    branchId   String
-    branch     Branch           @relation(fields: [branchId], references: [id])
-    createdAt  DateTime         @default(now())
-    updatedAt  DateTime         @default(now()) @updatedAt
-    salaries   Salary[]
-    advances   SalaryAdvance[]
-}
-
-enum SalaryAdvanceStatus {
-    PENDING
-    REPAID
-    CANCELLED
-}
-
-model SalaryAdvance {
-    id        String              @id @default(uuid())
-    staffId   String
-    staff     Staff               @relation(fields: [staffId], references: [id])
-    amount    Float
-    reason    String?             @db.LongText
-    status    SalaryAdvanceStatus @default(PENDING)
-    repaidAt  DateTime?
-    createdAt DateTime            @default(now())
-    updatedAt DateTime            @default(now()) @updatedAt
-
-    @@index([staffId])
-}
-
-model Salary {
-    id              String       @id @default(uuid())
-    staffId         String
-    staff           Staff        @relation(fields: [staffId], references: [id])
-    period          String
-    amount          Float
-    allowances      Float        @default(0)
-    deductions      Float        @default(0)
-    advanceDeducted Float        @default(0)
-    netPay          Float        @default(0)
-    userId          String
-    user            User         @relation(fields: [userId], references: [id])
-    status          SalaryStatus @default(PENDING)
-    paidAt          DateTime?
-    memo            String?      @db.LongText
-    createdAt       DateTime     @default(now())
-    updatedAt       DateTime     @default(now()) @updatedAt
-}
-
-enum SalaryStatus {
-    PENDING
-    COMPLETED
-    CANCELLED
-}
-
 model Settings {
     id                 String   @id @default(uuid())
     emailNotifications Boolean  @default(false)
@@ -598,371 +104,501 @@ model Settings {
     updatedAt          DateTime @default(now()) @updatedAt
 }
 
-model Supplier {
-    id               String            @id @default(uuid())
-    name             String
-    contact          String?
-    email            String?
-    address          String?
-    memo             String?           @db.LongText
-    createdAt        DateTime          @default(now())
-    updatedAt        DateTime          @default(now()) @updatedAt
-    supplierProducts SupplierProduct[]
-    purchaseOrders   PurchaseOrder[]
-}
+// ============================================================
+// School domain — first module: Students.
+// Mirrors the shape used by the frontend Students page so the
+// localStorage mock can be swapped for real API calls.
+// ============================================================
 
-model SupplierProduct {
+model Student {
     id             String          @id @default(uuid())
-    supplierId     String
-    name           String
-    price          Float
-    memo           String?         @db.LongText
+    admissionNo    String          @unique
+    firstName      String
+    lastName       String
+    className      String
+    stream         String
+    location       String?
+    email          String?
+    house          String?
+    phone          String?
+    gender         String?
+    dateOfBirth    String?
+    passportPhoto  String?         @db.LongText
+    parentName     String?
+    parentPhone    String?
+    parentEmail    String?
+    parentRelation String?
+    parentAddress  String?
     createdAt      DateTime        @default(now())
     updatedAt      DateTime        @default(now()) @updatedAt
-    supplier       Supplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-    purchaseOrders PurchaseOrder[]
+
+    @@index([className])
+    @@index([stream])
 }
 
-model PurchaseOrder {
-    id            String                     @id @default(uuid())
-    orderId       String
-    supplierId    String
-    productId     String
-    quantity      Int
-    unitPrice     Float
-    totalPrice    Float
-    amountPaid    Float                      @default(0)
-    amountDue     Float                      @default(0)
-    paymentTerms  PurchaseOrderPaymentTerms  @default(FULL)
-    paymentStatus PurchaseOrderPaymentStatus @default(UNPAID)
-    status        PurchaseOrderStatus        @default(PENDING)
-    createdAt     DateTime                   @default(now())
-    updatedAt     DateTime                   @default(now()) @updatedAt
-    supplier      Supplier                   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-    product       SupplierProduct            @relation(fields: [productId], references: [id], onDelete: Cascade)
-    payments      PurchaseOrderPayment[]
+model Staff {
+    id           String   @id @default(uuid())
+    firstName    String
+    lastName     String
+    role         String
+    address      String?
+    phone        String?
+    email        String?  @unique
+    salary       String?
+    isActive     Boolean  @default(true)
+    profileImage String?  @db.LongText
+    banner       String?  @db.LongText
+    socials      Json?
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @default(now()) @updatedAt
+
+    @@index([role])
 }
 
-model PurchaseOrderPayment {
-    id              String        @id @default(uuid())
-    purchaseOrderId String
-    amount          Float
-    method          PaymentMethod @default(CASH)
-    reference       String?
-    note            String?       @db.LongText
-    paidAt          DateTime      @default(now())
-    createdAt       DateTime      @default(now())
-    updatedAt       DateTime      @default(now()) @updatedAt
-    purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-
-    @@index([purchaseOrderId])
-}
-
-enum PurchaseOrderStatus {
-    PENDING
-    RECEIVED
-    CANCELLED
-}
-
-enum PurchaseOrderPaymentTerms {
-    FULL
-    CREDIT
-}
-
-enum PurchaseOrderPaymentStatus {
-    UNPAID
-    PARTIALLY_PAID
-    PAID
-}
-
-enum PaymentMethod {
-    CASH
-    MOBILE_MONEY
-    BANK_TRANSFER
-    CARD
-    CHEQUE
-    OTHER
-}
-
-enum InvoiceStatus {
-    PENDING
-    PAID
-    CONVERTED
-    CANCELLED
-}
-
-model Invoice {
-    id              String           @id @default(uuid())
-    invoiceId       String           @unique
-    userId          String
-    user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-    customerId      String?
-    customer        Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
-    status          InvoiceStatus    @default(PENDING)
-    totalAmount     Float            @default(0)
-    amountPaid      Float            @default(0)
-    amountDue       Float            @default(0)
-    memo            String?          @db.LongText
-    convertedToSaleId String?
-    createdAt       DateTime         @default(now())
-    updatedAt       DateTime         @default(now()) @updatedAt
-    items           InvoiceItem[]
-    payments        InvoicePayment[]
-
-    @@index([userId])
-    @@index([customerId])
-    @@index([status])
-}
-
-model InvoiceItem {
-    id          String    @id @default(uuid())
-    invoiceId   String
-    invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-    productId   String?
-    product     Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
-    itemName    String
-    quantity    Int
-    unitPrice   Float
-    lineTotal   Float
-    isCustom    Boolean   @default(false)
-    createdAt   DateTime  @default(now())
-    updatedAt   DateTime  @default(now()) @updatedAt
-
-    @@index([invoiceId])
-    @@index([productId])
-}
-
-model InvoicePayment {
-    id            String        @id @default(uuid())
-    invoiceId     String
-    invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-    amount        Float
-    paymentMethod PaymentMethod @default(CASH)
-    reference     String?
-    notes         String?       @db.LongText
-    userId        String
-    user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-    createdAt     DateTime      @default(now())
-    updatedAt     DateTime      @default(now()) @updatedAt
-
-    @@index([invoiceId])
-    @@index([userId])
-}
-
-model CustomerInvoice {
+model Class {
     id        String   @id @default(uuid())
-    customerId String
-    customer  Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-    invoiceId String
-    createdAt DateTime @default(now())
-
-    @@unique([customerId, invoiceId])
-    @@index([customerId])
-}
-
-// Add these relations to existing models
-// Add to Product model: invoiceItems InvoiceItem[]
-// Add to Customer model: invoices Invoice[] and invoiceLink CustomerInvoice[]
-// Add to User model: invoices Invoice[] and invoicePayments InvoicePayment[]
-
-// ============================================================
-// Website CMS models (jubra-edutech-portal)
-// ============================================================
-
-model BlogPost {
-    id          String   @id @default(uuid())
-    slug        String   @unique
-    title       String
-    excerpt     String?  @db.Text
-    body        String   @db.LongText
-    cover       String?
-    date        DateTime @default(now())
-    author      String   @default("Jubra Editorial")
-    readMinutes Int      @default(5)
-    isPublished Boolean  @default(true)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
-
-    @@index([isPublished])
-}
-
-model Testimonial {
-    id          String   @id @default(uuid())
-    name        String
-    role        String?
-    quote       String   @db.Text
-    image       String?
-    sortOrder   Int      @default(0)
-    isPublished Boolean  @default(true)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
-}
-
-model Faq {
-    id          String   @id @default(uuid())
-    question    String   @db.Text
-    answer      String   @db.Text
-    sortOrder   Int      @default(0)
-    isPublished Boolean  @default(true)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
-}
-
-model CompanyValue {
-    id          String   @id @default(uuid())
-    icon        String   @default("Sparkles")
-    title       String
-    description String   @db.Text
-    sortOrder   Int      @default(0)
-    isPublished Boolean  @default(true)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
-}
-
-model CompanyStat {
-    id          String   @id @default(uuid())
-    value       String
-    label       String
-    sortOrder   Int      @default(0)
-    isPublished Boolean  @default(true)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
-}
-
-model OtherService {
-    id          String   @id @default(uuid())
-    icon        String   @default("Sparkles")
-    title       String
-    description String   @db.Text
-    sortOrder   Int      @default(0)
-    isPublished Boolean  @default(true)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
-}
-
-model FeaturedPick {
-    id          String   @id @default(uuid())
-    productId   String
-    sortOrder   Int      @default(0)
-    isPublished Boolean  @default(true)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
-
-    @@unique([productId])
-    @@index([isPublished])
-    @@index([sortOrder])
-}
-
-model HowItWorksVideo {
-    id          String   @id @default(uuid())
-    title       String
-    description String?  @db.Text
-    url         String
-    thumbnail   String?
-    category    String?
-    durationSec Int?
-    sortOrder   Int      @default(0)
-    isPublished Boolean  @default(true)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
-
-    @@index([isPublished])
-    @@index([sortOrder])
-}
-
-model SiteSetting {
-    id        String   @id @default(uuid())
-    key       String   @unique
-    value     String   @db.LongText
+    name      String
+    teacher   String?
+    students  Int      @default(0)
+    schedule  String?
+    room      String?
+    color     String?
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
 }
 
-enum InquiryType {
-    CART
-    CONTACT
+model TimetableEntry {
+    id        String   @id @default(uuid())
+    className String
+    day       String
+    startTime String
+    endTime   String
+    subject   String
+    teacher   String?
+    room      String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+
+    @@index([className])
+    @@index([teacher])
 }
 
-enum InquiryStatus {
-    NEW
-    SEEN
-    HANDLED
+model Subject {
+    id        String   @id @default(uuid())
+    name      String   @unique
+    code      String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
-model WebsiteInquiry {
-    id        String        @id @default(uuid())
-    type      InquiryType
+model InventoryItem {
+    id        String   @id @default(uuid())
     name      String
-    email     String?
-    phone     String?
-    message   String?       @db.Text
-    payload   String?       @db.LongText
-    status    InquiryStatus @default(NEW)
-    createdAt DateTime      @default(now())
-    updatedAt DateTime      @default(now()) @updatedAt
+    category  String
+    sku       String   @unique
+    quantity  Int      @default(0)
+    minStock  Int      @default(0)
+    unitPrice Float    @default(0)
+    supplier  String?
+    location  String?
+    status    String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 
-    @@index([status])
-    @@index([type])
-    @@index([createdAt])
+    @@index([category])
 }
 
-enum CashAccountType {
-    CASH
-    BANK
-    MOBILE_MONEY
-    TILL
+model BusRoute {
+    id            String   @id @default(uuid())
+    routeName     String
+    busNumber     String
+    driverName    String?
+    capacity      Int      @default(0)
+    studentsCount Int      @default(0)
+    startTime     String?
+    endTime       String?
+    status        String?
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @default(now()) @updatedAt
 }
 
-enum LedgerSource {
-    SALE
-    SALE_RETURN
-    CREDIT_PAYMENT
-    INVOICE_PAYMENT
-    EXPENSE
-    PURCHASE_PAYMENT
-    SALARY_PAYMENT
-    SALARY_ADVANCE
-    COMMISSION_PAYOUT
-    BRANCH_DEPOSIT
-    TRANSFER
-    ADJUSTMENT
-    OPENING_BALANCE
+model HostelRoom {
+    id         String   @id @default(uuid())
+    hostelName String
+    roomNumber String
+    type       String?
+    gender     String?
+    capacity   Int      @default(0)
+    occupied   Int      @default(0)
+    warden     String?
+    status     String?
+    monthlyFee Float    @default(0)
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @default(now()) @updatedAt
 }
 
-model CashAccount {
-    id             String          @id @default(uuid())
-    name           String
-    type           CashAccountType
-    branchId       String?
-    branch         Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
-    currency       String          @default("UGX")
-    openingBalance Decimal         @default(0) @db.Decimal(14, 2)
-    isActive       Boolean         @default(true)
-    notes          String?         @db.Text
-    entries        LedgerEntry[]   @relation("LedgerAccount")
-    createdAt      DateTime        @default(now())
-    updatedAt      DateTime        @default(now()) @updatedAt
+model FeeRecord {
+    id          String   @id @default(uuid())
+    studentId   String?
+    studentName String
+    class       String?
+    feeType     String
+    amount      Float    @default(0)
+    dueDate     String?
+    paidAmount  Float?
+    status      String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @default(now()) @updatedAt
 
-    @@index([branchId])
-    @@index([type])
+    @@index([studentId])
 }
 
-model LedgerEntry {
-    id                    String       @id @default(uuid())
-    accountId             String
-    account               CashAccount  @relation("LedgerAccount", fields: [accountId], references: [id], onDelete: Restrict)
-    amount                Decimal      @db.Decimal(14, 2)
-    occurredAt            DateTime
-    source                LedgerSource
-    referenceId           String?
-    counterpartyAccountId String?
-    description           String?      @db.Text
-    branchId              String?
-    createdById           String?
-    reconciledAt          DateTime?
-    createdAt             DateTime     @default(now())
+model BulkNotification {
+    id             String   @id @default(uuid())
+    title          String
+    message        String   @db.Text
+    type           String
+    recipients     String?
+    recipientCount Int      @default(0)
+    sentDate       String?
+    status         String?
+    createdBy      String?
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @default(now()) @updatedAt
+}
 
-    @@index([accountId, occurredAt])
-    @@index([source, referenceId])
-    @@index([branchId])
+model PayrollRecord {
+    id         String   @id @default(uuid())
+    employeeId String
+    name       String
+    position   String?
+    department String?
+    baseSalary Float    @default(0)
+    allowances Float    @default(0)
+    deductions Float    @default(0)
+    netSalary  Float    @default(0)
+    month      String?
+    year       Int?
+    status     String?
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @default(now()) @updatedAt
+
+    @@index([employeeId])
+}
+
+model Certificate {
+    id              String   @id @default(uuid())
+    studentName     String
+    studentId       String?
+    certificateType String
+    issuedDate      String?
+    description     String?  @db.Text
+    signedBy        String?
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @default(now()) @updatedAt
+
+    @@index([studentId])
+}
+
+model Book {
+    id              String   @id @default(uuid())
+    title           String
+    author          String?
+    isbn            String?
+    category        String?
+    totalCopies     Int      @default(0)
+    availableCopies Int      @default(0)
+    status          String?
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @default(now()) @updatedAt
+
+    @@index([category])
+}
+
+model BorrowRecord {
+    id          String   @id @default(uuid())
+    bookTitle   String
+    studentName String
+    studentId   String?
+    borrowDate  String?
+    dueDate     String?
+    status      String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @default(now()) @updatedAt
+}
+
+model Admission {
+    applicantName String
+    dob           String?
+    gradeApplied  String?
+    parentName    String?
+    parentEmail   String?
+    parentPhone   String?
+    priorSchool   String?
+    documentUrl   String?
+    status        String?  @default("pending")
+    id            String   @id @default(uuid())
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @default(now()) @updatedAt
+}
+
+model Alumnus {
+    id             String   @id @default(uuid())
+    fullName       String
+    graduationYear Int?
+    occupation     String?
+    email          String?
+    phone          String?
+    isDonor        Boolean  @default(false)
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @default(now()) @updatedAt
+}
+
+model DisciplineIncident {
+    id          String   @id @default(uuid())
+    studentName String
+    date        String?
+    type        String
+    severity    String?
+    description String?  @db.Text
+    action      String?  @db.Text
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @default(now()) @updatedAt
+}
+
+model Event {
+    id          String   @id @default(uuid())
+    title       String
+    date        String?
+    type        String
+    audience    String?
+    description String?  @db.Text
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @default(now()) @updatedAt
+}
+
+model HealthRecord {
+    id               String   @id @default(uuid())
+    studentName      String
+    bloodType        String?
+    allergies        String?
+    conditions       String?  @db.Text
+    immunizations    String?
+    emergencyContact String?
+    emergencyPhone   String?
+    createdAt        DateTime @default(now())
+    updatedAt        DateTime @default(now()) @updatedAt
+}
+
+model LeaveRequest {
+    id           String   @id @default(uuid())
+    employeeName String
+    type         String
+    startDate    String?
+    endDate      String?
+    reason       String?  @db.Text
+    status       String?  @default("pending")
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @default(now()) @updatedAt
+}
+
+model GradeRecord {
+    id        String   @id @default(uuid())
+    student   String
+    className  String
+    subject   String
+    midterm   Float    @default(0)
+    final     Float    @default(0)
+    overall   String?
+    gpa       Float    @default(0)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+
+    @@index([className])
+    @@index([subject])
+}
+
+model AttendanceRecord {
+    id        String   @id @default(uuid())
+    date      String
+    className String
+    studentId String
+    status    String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+
+    @@unique([date, className, studentId])
+}
+
+model ExamAssignment {
+    id           String   @id @default(uuid())
+    level        String
+    className     String
+    subject      String
+    teacherEmail String?
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @default(now()) @updatedAt
+}
+
+model ExamMark {
+    id        String   @id @default(uuid())
+    level     String   @db.VarChar(120)
+    term      String   @db.VarChar(120)
+    className String   @db.VarChar(120)
+    subject   String   @db.VarChar(120)
+    topic     String   @default("") @db.VarChar(120)
+    studentId String   @db.VarChar(120)
+    score     Float    @default(0)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+
+    @@unique([level, term, className, subject, topic, studentId])
+}
+
+model Assignment {
+    id          String   @id @default(uuid())
+    title       String
+    subject     String
+    className   String
+    dueDate     String?
+    description String?  @db.Text
+    createdBy   String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @default(now()) @updatedAt
+
+    @@index([className])
+}
+
+model AssignmentSubmission {
+    id           String   @id @default(uuid())
+    assignmentId String
+    studentName  String
+    content      String?  @db.Text
+    link         String?
+    submittedAt  String?
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @default(now()) @updatedAt
+
+    @@index([assignmentId])
+}
+
+model Quiz {
+    id              String   @id @default(uuid())
+    title           String
+    subject         String
+    classTarget     String
+    description     String?  @db.Text
+    durationMinutes Int      @default(30)
+    deadline        String
+    totalPoints     Int      @default(0)
+    status          String   @default("published")
+    createdBy       String?
+    questions       Json
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @default(now()) @updatedAt
+}
+
+model QuizSubmission {
+    id          String   @id @default(uuid())
+    quizId      String
+    studentId   String?
+    studentName String
+    submittedAt String?
+    answers     Json
+    score       Float?
+    autoGraded  Boolean  @default(false)
+    marks       Json?
+    released    Boolean  @default(false)
+    feedback    String?  @db.Text
+    gradedBy    String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @default(now()) @updatedAt
+
+    @@index([quizId])
+    @@index([studentId])
+}
+
+model Message {
+    id        String   @id @default(uuid())
+    from      String?
+    to        String
+    subject   String
+    body      String?  @db.Text
+    sentAt    String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Blast {
+    id         String   @id @default(uuid())
+    channel    String
+    audience   String
+    subject    String
+    body       String?  @db.Text
+    recipients Int      @default(0)
+    sentAt     String?
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @default(now()) @updatedAt
+}
+
+model FeePayment {
+    id          String   @id @default(uuid())
+    studentName String
+    invoiceRef  String
+    amount      Float    @default(0)
+    method      String
+    cardLast4   String?
+    status      String?
+    paidAt      String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @default(now()) @updatedAt
+}
+
+model RFIDDevice {
+    id        String   @id @default(uuid())
+    name      String
+    location  String?
+    status    String?
+    lastSync  String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+}
+
+model RFIDAttendanceRecord {
+    id          String   @id @default(uuid())
+    studentId   String
+    studentName String?
+    rfidTag     String
+    timestamp   String?
+    status      String?
+    scannedBy   String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @default(now()) @updatedAt
+
+    @@index([studentId])
+}
+
+model AppSetting {
+    key       String   @id
+    value     Json
+    updatedAt DateTime @default(now()) @updatedAt
+}
+
+model UserPreference {
+    userId    String   @id
+    value     Json
+    updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Resource {
+    id        String   @id @default(uuid())
+    title     String
+    type      String?
+    subject   String?
+    fileUrl   String?  @db.Text
+    className String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+
+    @@index([subject])
 }

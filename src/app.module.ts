@@ -8,22 +8,41 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { createKeyv } from '@keyv/redis';
 import { join } from 'path';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { BranchModule } from './branch/branch.module';
-import { DailyReportModule } from './daily_report/daily_report.module';
-import { ProductModule } from './product/product.module';
-import { SalesModule } from './sales/sales.module';
-import { ExpenseModule } from './expense/expense.module';
-import { StaffModule } from './staff/staff.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { SupplierModule } from './supplier/supplier.module';
-import { ProductionModule } from './production/production.module';
 import { AuditModule } from './audit/audit.module';
-import { InvoiceModule } from './invoice/invoice.module';
-import { BranchPayablesModule } from './branch-payables/branch-payables.module';
 import { UploadModule } from './upload/upload.module';
-import { WebsiteModule } from './website/website.module';
-import { CmsModule } from './cms/cms.module';
-import { CashAccountModule } from './cash-account/cash-account.module';
+import { StudentsModule } from './students/students.module';
+import { StaffModule } from './staff/staff.module';
+import { ClassesModule } from './classes/classes.module';
+import { TimetableModule } from './timetable/timetable.module';
+import { SubjectsModule } from './subjects/subjects.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { TransportModule } from './transport/transport.module';
+import { HostelModule } from './hostel/hostel.module';
+import { StudentFeesModule } from './student-fees/student-fees.module';
+import { BulkNotificationsModule } from './bulk-notifications/bulk-notifications.module';
+import { PayrollModule } from './payroll/payroll.module';
+import { CertificatesModule } from './certificates/certificates.module';
+import { LibraryModule } from './library/library.module';
+import { AdmissionsModule } from './admissions/admissions.module';
+import { AlumniModule } from './alumni/alumni.module';
+import { DisciplineModule } from './discipline/discipline.module';
+import { EventsModule } from './events/events.module';
+import { HealthRecordsModule } from './health-records/health-records.module';
+import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
+import { GradesModule } from './grades/grades.module';
+import { AttendanceModule } from './attendance/attendance.module';
+import { ExamAssignmentsModule } from './exam-assignments/exam-assignments.module';
+import { ExamMarksModule } from './exam-marks/exam-marks.module';
+import { AssignmentsModule } from './assignments/assignments.module';
+import { QuizzesModule } from './quizzes/quizzes.module';
+import { MessagesModule } from './messages/messages.module';
+import { BlastsModule } from './blasts/blasts.module';
+import { FeePaymentsModule } from './fee-payments/fee-payments.module';
+import { RfidModule } from './rfid/rfid.module';
+import { AppSettingsModule } from './app-settings/app-settings.module';
+import { PreferencesModule } from './preferences/preferences.module';
+import { ResourcesModule } from './resources/resources.module';
 
 @Module({
     imports: [
@@ -54,24 +73,41 @@ import { CashAccountModule } from './cash-account/cash-account.module';
         UserModule,
         PrismaModule,
         AuthModule,
-        BranchModule,
-        DailyReportModule,
-        ProductModule,
-        SalesModule,
-        ExpenseModule,
-        StaffModule,
         DashboardModule,
-        SupplierModule,
-        ProductionModule,
         AuditModule,
-        InvoiceModule,
-        // Branch payables (admin)
-        BranchPayablesModule,
-        // Website CMS for jubra-edutech-portal
         UploadModule,
-        WebsiteModule,
-        CmsModule,
-        CashAccountModule,
+        StudentsModule,
+        StaffModule,
+        ClassesModule,
+        TimetableModule,
+        SubjectsModule,
+        InventoryModule,
+        TransportModule,
+        HostelModule,
+        StudentFeesModule,
+        BulkNotificationsModule,
+        PayrollModule,
+        CertificatesModule,
+        LibraryModule,
+        AdmissionsModule,
+        AlumniModule,
+        DisciplineModule,
+        EventsModule,
+        HealthRecordsModule,
+        LeaveRequestsModule,
+        GradesModule,
+        AttendanceModule,
+        ExamAssignmentsModule,
+        ExamMarksModule,
+        AssignmentsModule,
+        QuizzesModule,
+        MessagesModule,
+        BlastsModule,
+        FeePaymentsModule,
+        RfidModule,
+        AppSettingsModule,
+        PreferencesModule,
+        ResourcesModule,
     ],
     controllers: [],
     providers: [],

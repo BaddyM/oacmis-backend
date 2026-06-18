@@ -1,12 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, BadRequestException, Res, UseGuards, Query, Inject, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, BadRequestException, Res, UseGuards, Query, Inject } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto, CustomerDto, UpdateCustomerDto } from './dto/create-user.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Response } from 'express';
 import { ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
-const fs = require("fs");
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('user')
@@ -80,73 +79,5 @@ export class UserController {
     @Delete(':userId')
     remove(@Param('userId') userId: string) {
         return this.userService.remove(userId);
-    }
-
-    //Customer
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard)
-    @Post('customer/create')
-    create_customer(@Body() customerData: CustomerDto) {
-        return this.userService.create_customer(customerData);
-    }
-
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard)
-    @ApiQuery({ name: "page" })
-    @ApiQuery({ name: "limit" })
-    @Get('customer/list')
-    get_customers(@Query("page") page: string, @Query("limit") limit: string) {
-        return this.userService.get_customers(parseInt(page), parseInt(limit));
-    }
-
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard)
-    @ApiParam({ name: "id" })
-    @Patch('customer/update/:id')
-    update_customer(@Body() customerData: UpdateCustomerDto, @Param("id") id: string) {
-        return this.userService.update_customer(id, customerData);
-    }
-
-    //Commissions
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard)
-    @Get(':userId/commission/:period')
-    @ApiParam({ name: 'userId' })
-    @ApiParam({ name: 'period' })
-    compute_commission(@Param('userId') userId: string, @Param('period') period: string) {
-        return this.userService.compute_commission(userId, period);
-    }
-
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard)
-    @Post(':userId/commission/:period/payout')
-    @ApiParam({ name: 'userId' })
-    @ApiParam({ name: 'period' })
-    create_commission_payout(@Param('userId') userId: string, @Param('period') period: string) {
-        return this.userService.create_commission_payout(userId, period);
-    }
-
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard)
-    @Get('commission/payouts/list')
-    @ApiQuery({ name: 'userId', required: false })
-    @ApiQuery({ name: 'period', required: false })
-    list_commission_payouts(@Query('userId') userId?: string, @Query('period') period?: string) {
-        return this.userService.list_commission_payouts(userId, period);
-    }
-
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard)
-    @Patch('commission/payout/:id/paid')
-    @ApiParam({ name: 'id' })
-    mark_commission_paid(
-        @Req() req: any,
-        @Param('id') id: string,
-        @Body() body: { cashAccountId?: string } = {},
-    ) {
-        return this.userService.mark_commission_paid(id, {
-            cashAccountId: body?.cashAccountId,
-            createdById: req?.user?.userId ?? req?.user?.id,
-        });
     }
 }

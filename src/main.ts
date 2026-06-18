@@ -2,9 +2,14 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    // Disable Nest's built-in body parser so we can raise the size limit —
+    // student/staff records can carry base64 profile photos in the JSON body.
+    const app = await NestFactory.create(AppModule, { bodyParser: false });
+    app.use(json({ limit: '10mb' }));
+    app.use(urlencoded({ extended: true, limit: '10mb' }));
 
     if (process.env.MODE == "Dev") {
         // Set up Swagger

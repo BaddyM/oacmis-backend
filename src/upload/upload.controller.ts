@@ -1,6 +1,7 @@
 import {
     BadRequestException,
     Controller,
+    Param,
     Post,
     UploadedFile,
     UseGuards,
@@ -9,17 +10,25 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { ApiBearerAuth, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { mkdirSync } from 'fs';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiParam } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 const MAX_SIZE = 5 * 1024 * 1024;
 
+// Sub-folders under /uploads that callers may target. Anything else falls
+// back to "website" so a bad value can't write outside the uploads tree.
+const ALLOWED_FOLDERS = ['website', 'users'];
+const resolveFolder = (folder?: string) =>
+    folder && ALLOWED_FOLDERS.includes(folder) ? folder : 'website';
+
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller('upload')
 export class UploadController {
-    @Post('image')
+    @Post(['image', 'image/:folder'])
+    @ApiParam({ name: 'folder', required: false, enum: ALLOWED_FOLDERS })
     @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {
@@ -30,7 +39,11 @@ export class UploadController {
     @UseInterceptors(
         FileInterceptor('file', {
             storage: diskStorage({
-                destination: './uploads/website',
+                destination: (req, _file, cb) => {
+                    const dest = `./uploads/${resolveFolder(req.params.folder)}`;
+                    mkdirSync(dest, { recursive: true });
+                    cb(null, dest);
+                },
                 filename: (_req, file, cb) => {
                     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
                     cb(null, `${unique}${extname(file.originalname).toLowerCase()}`);
@@ -45,11 +58,11 @@ export class UploadController {
             limits: { fileSize: MAX_SIZE },
         }),
     )
-    upload(@UploadedFile() file: Express.Multer.File) {
+    upload(@UploadedFile() file: Express.Multer.File, @Param('folder') folder?: string) {
         if (!file) throw new BadRequestException('No file uploaded');
         return {
             filename: file.filename,
-            url: `/uploads/website/${file.filename}`,
+            url: `/uploads/${resolveFolder(folder)}/${file.filename}`,
         };
     }
 }
