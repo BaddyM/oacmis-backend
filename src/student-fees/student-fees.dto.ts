@@ -6,6 +6,7 @@ export class CreateFeeRecordDto {
     @ApiProperty({ required: false }) @IsString() @IsOptional() studentId?: string;
     @ApiProperty() @IsString() @IsNotEmpty() studentName!: string;
     @ApiProperty({ required: false }) @IsString() @IsOptional() class?: string;
+    @ApiProperty({ required: false }) @IsString() @IsOptional() term?: string;
     @ApiProperty() @IsString() @IsNotEmpty() feeType!: string;
     @ApiProperty({ default: 0 }) @IsNumber() @Min(0) @IsOptional() amount?: number;
     @ApiProperty({ required: false }) @IsString() @IsOptional() dueDate?: string;

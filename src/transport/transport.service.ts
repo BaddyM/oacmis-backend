@@ -12,4 +12,10 @@ export class TransportService extends BaseCrudService {
     constructor(prisma: PrismaService, audit: AuditService) {
         super(prisma, audit);
     }
+
+    // Remove the route's student assignments before deleting the route itself.
+    async remove(id: string) {
+        await this.prisma.routeAssignment.deleteMany({ where: { routeId: id } });
+        return super.remove(id);
+    }
 }

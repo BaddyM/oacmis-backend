@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { promises as fs } from 'fs';
+import { resolve, sep } from 'path';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditService } from 'src/audit/audit.service';
 import { CreateStudentDto } from './dto/create-student.dto';
@@ -7,6 +9,21 @@ import { UpdateStudentDto } from './dto/update-student.dto';
 
 @Injectable()
 export class StudentsService {
+    private readonly uploadsRoot = resolve(process.cwd(), 'uploads');
+
+    // Best-effort delete of a previously-uploaded photo file. Only touches files
+    // inside the uploads tree; ignores data URLs, external URLs and missing files.
+    private async deleteUploadedFile(url?: string | null) {
+        if (!url || !url.startsWith('/uploads/')) return;
+        const path = resolve(process.cwd(), '.' + url);
+        if (path !== this.uploadsRoot && !path.startsWith(this.uploadsRoot + sep)) return; // guard traversal
+        try {
+            await fs.unlink(path);
+        } catch {
+            /* already gone or not a file — ignore */
+        }
+    }
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly auditService: AuditService,
@@ -44,20 +61,21 @@ export class StudentsService {
         return { requested: students.length, created: result.count };
     }
 
-    async findAll(page = 1, limit = 20, search?: string) {
-        const where: Prisma.StudentWhereInput = search
-            ? {
-                OR: [
-                    { firstName: { contains: search } },
-                    { lastName: { contains: search } },
-                    { admissionNo: { contains: search } },
-                    { className: { contains: search } },
-                    { stream: { contains: search } },
-                    { house: { contains: search } },
-                    { email: { contains: search } },
-                ],
-            }
-            : {};
+    async findAll(page = 1, limit = 20, search?: string, className?: string) {
+        const where: Prisma.StudentWhereInput = {};
+        if (search) {
+            where.OR = [
+                { firstName: { contains: search } },
+                { lastName: { contains: search } },
+                { admissionNo: { contains: search } },
+                { className: { contains: search } },
+                { stream: { contains: search } },
+                { house: { contains: search } },
+                { email: { contains: search } },
+            ];
+        }
+        // Exact class match (used to load a class roster) — narrows server-side.
+        if (className) where.className = className;
 
         const [data, total] = await this.prisma.$transaction([
             this.prisma.student.findMany({
@@ -82,6 +100,11 @@ export class StudentsService {
         const before = await this.findOne(id);
         try {
             const student = await this.prisma.student.update({ where: { id }, data: dto });
+            // If the photo was replaced (or cleared), remove the old file from disk.
+            const photoProvided = Object.prototype.hasOwnProperty.call(dto, 'passportPhoto');
+            if (photoProvided && before.passportPhoto && before.passportPhoto !== dto.passportPhoto) {
+                await this.deleteUploadedFile(before.passportPhoto);
+            }
             await this.auditService.log({
                 action: 'STUDENT_UPDATED',
                 entity: 'Student',
@@ -100,7 +123,17 @@ export class StudentsService {
 
     async remove(id: string) {
         const before = await this.findOne(id);
+        // Clean up rows that reference this student by id (no DB-level FKs).
+        await this.prisma.$transaction([
+            this.prisma.routeAssignment.deleteMany({ where: { studentId: id } }),
+            this.prisma.roomAssignment.deleteMany({ where: { studentId: id } }),
+            this.prisma.feeRecord.deleteMany({ where: { studentId: id } }),
+            this.prisma.feePayment.deleteMany({ where: { studentId: id } }),
+            this.prisma.examMark.deleteMany({ where: { studentId: id } }),
+        ]);
         const student = await this.prisma.student.delete({ where: { id } });
+        // Remove the student's photo file so it doesn't linger on disk.
+        await this.deleteUploadedFile(before.passportPhoto);
         await this.auditService.log({
             action: 'STUDENT_DELETED',
             entity: 'Student',

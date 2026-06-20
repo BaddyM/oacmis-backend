@@ -12,4 +12,13 @@ export class FeePaymentsService extends BaseCrudService {
     constructor(prisma: PrismaService, audit: AuditService) {
         super(prisma, audit);
     }
+
+    // One student's payment history (indexed) — for per-student receipts.
+    async findByStudent(studentId: string) {
+        const data = await this.prisma.feePayment.findMany({
+            where: { studentId },
+            orderBy: { createdAt: 'desc' },
+        });
+        return { data, total: data.length, totalPages: 1 };
+    }
 }

@@ -12,4 +12,10 @@ export class HostelService extends BaseCrudService {
     constructor(prisma: PrismaService, audit: AuditService) {
         super(prisma, audit);
     }
+
+    // Remove the room's student assignments before deleting the room itself.
+    async remove(id: string) {
+        await this.prisma.roomAssignment.deleteMany({ where: { roomId: id } });
+        return super.remove(id);
+    }
 }

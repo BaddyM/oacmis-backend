@@ -62,7 +62,7 @@ model PasswordResetToken {
 model LoginAccess {
     id        String   @id @default(uuid())
     userId    String
-    user      User     @relation(fields: [userId], references: [id])
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
 }
@@ -99,7 +99,7 @@ model Settings {
     id                 String   @id @default(uuid())
     emailNotifications Boolean  @default(false)
     userId             String
-    user               User     @relation(fields: [userId], references: [id])
+    user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
     createdAt          DateTime @default(now())
     updatedAt          DateTime @default(now()) @updatedAt
 }
@@ -222,6 +222,19 @@ model BusRoute {
     updatedAt     DateTime @default(now()) @updatedAt
 }
 
+model RouteAssignment {
+    id          String   @id @default(uuid())
+    routeId     String
+    studentId   String
+    studentName String
+    className   String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @default(now()) @updatedAt
+
+    @@unique([routeId, studentId])
+    @@index([routeId])
+}
+
 model HostelRoom {
     id         String   @id @default(uuid())
     hostelName String
@@ -237,11 +250,25 @@ model HostelRoom {
     updatedAt  DateTime @default(now()) @updatedAt
 }
 
+model RoomAssignment {
+    id          String   @id @default(uuid())
+    roomId      String
+    studentId   String
+    studentName String
+    className   String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @default(now()) @updatedAt
+
+    @@unique([roomId, studentId])
+    @@index([roomId])
+}
+
 model FeeRecord {
     id          String   @id @default(uuid())
     studentId   String?
     studentName String
     class       String?
+    term        String?
     feeType     String
     amount      Float    @default(0)
     dueDate     String?
@@ -251,6 +278,7 @@ model FeeRecord {
     updatedAt   DateTime @default(now()) @updatedAt
 
     @@index([studentId])
+    @@index([class])
 }
 
 model BulkNotification {
@@ -463,6 +491,7 @@ model Assignment {
     dueDate     String?
     description String?  @db.Text
     createdBy   String?
+    active      Boolean  @default(true)
     createdAt   DateTime @default(now())
     updatedAt   DateTime @default(now()) @updatedAt
 
@@ -543,8 +572,10 @@ model Blast {
 
 model FeePayment {
     id          String   @id @default(uuid())
+    studentId   String?
     studentName String
     invoiceRef  String
+    feeRecordId String?
     amount      Float    @default(0)
     method      String
     cardLast4   String?
@@ -552,6 +583,8 @@ model FeePayment {
     paidAt      String?
     createdAt   DateTime @default(now())
     updatedAt   DateTime @default(now()) @updatedAt
+
+    @@index([studentId])
 }
 
 model RFIDDevice {

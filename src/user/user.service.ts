@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -22,7 +22,26 @@ export class UserService {
         private readonly auditService: AuditService,
     ) { }
 
+    // Enforce the admin-configured password policy (Settings → Security).
+    private async validatePassword(raw: string) {
+        const pw = `${raw ?? ''}`;
+        const row = await this.prisma.appSetting.findUnique({ where: { key: 'security_settings' } });
+        const policy = (row?.value as any)?.passwordPolicy as string | undefined;
+        if (policy?.includes('Maximum')) {
+            if (pw.length < 16 || !/[a-z]/.test(pw) || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
+                throw new BadRequestException('Password must be at least 16 characters and include uppercase, lowercase, a number and a symbol.');
+            }
+        } else if (policy?.includes('Strong')) {
+            if (pw.length < 12 || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
+                throw new BadRequestException('Password must be at least 12 characters and include a number and a symbol.');
+            }
+        } else if (pw.length < 8) {
+            throw new BadRequestException('Password must be at least 8 characters.');
+        }
+    }
+
     async create(createUserDto: CreateUserDto) {
+        await this.validatePassword(createUserDto.password);
         const password = await bcrypt.hash(`${createUserDto.password}`, 10);
 
         const data = await this.prisma.user.create({
@@ -92,9 +111,9 @@ export class UserService {
             skip: (page - 1) * limit,
             take: limit,
         });
-        const total = await this.prisma.user.count();
+        const total = await this.prisma.user.count({ where: { ...filter } });
         const totalPages = Math.ceil(total / limit);
-        return { data, totalPages };
+        return { data, total, totalPages };
     }
 
     async findOne(userId: string) {
@@ -114,8 +133,9 @@ export class UserService {
         // 2. Prepare the update data object
         const updateData: any = { ...otherData };
 
-        // 3. Conditionally hash and add the password if it exists
+        // 3. Conditionally validate, hash and add the password if it exists
         if (password) {
+            await this.validatePassword(password);
             updateData.password = await bcrypt.hash(`${password}`, 10);
         }
 

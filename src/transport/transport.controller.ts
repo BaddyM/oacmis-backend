@@ -1,14 +1,18 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { Roles } from 'src/auth/roles.decorator';
+import { RolesGuard } from 'src/auth/roles.guard';
 import { TransportService } from './transport.service';
 import { CreateBusRouteDto, UpdateBusRouteDto } from './transport.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('transport')
 export class TransportController {
     constructor(private readonly service: TransportService) { }
+
+    @Roles('admin')
 
     @Post()
     create(@Body() dto: CreateBusRouteDto) {
@@ -25,10 +29,14 @@ export class TransportController {
         return this.service.findOne(id);
     }
 
+    @Roles('admin')
+
     @Patch(':id')
     update(@Param('id') id: string, @Body() dto: UpdateBusRouteDto) {
         return this.service.update(id, dto);
     }
+
+    @Roles('admin')
 
     @Delete(':id')
     remove(@Param('id') id: string) {

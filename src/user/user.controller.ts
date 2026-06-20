@@ -5,6 +5,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { Response } from 'express';
 import { ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { Roles } from 'src/auth/roles.decorator';
+import { RolesGuard } from 'src/auth/roles.guard';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -30,6 +32,8 @@ export class UserController {
             });
         } catch (err) {
             console.log(err);
+            // Preserve specific validation messages (e.g. password policy).
+            if (err instanceof BadRequestException) throw err;
             throw new BadRequestException({
                 success: false,
                 message: "Failed to create user",
@@ -38,7 +42,8 @@ export class UserController {
     }
 
     @ApiBearerAuth()
-    @UseGuards(AuthGuard)
+    @UseGuards(AuthGuard, RolesGuard)
+    @Roles('admin')
     @Get("all")
     @ApiQuery({ name: "page" })
     @ApiQuery({ name: "limit" })
@@ -48,7 +53,8 @@ export class UserController {
     }
 
     @ApiBearerAuth()
-    @UseGuards(AuthGuard)
+    @UseGuards(AuthGuard, RolesGuard)
+    @Roles('admin')
     @Get("loginAccess")
     @ApiQuery({ name: "page" })
     @ApiQuery({ name: "limit" })
@@ -65,7 +71,8 @@ export class UserController {
     }
 
     @ApiBearerAuth()
-    @UseGuards(AuthGuard)
+    @UseGuards(AuthGuard, RolesGuard)
+    @Roles('admin')
     @ApiParam({ name: "userId" })
     @Patch(':userId')
     async update(@Param('userId') userId: string, @Body() updateUserDto: UpdateUserDto) {
@@ -74,7 +81,8 @@ export class UserController {
     }
 
     @ApiBearerAuth()
-    @UseGuards(AuthGuard)
+    @UseGuards(AuthGuard, RolesGuard)
+    @Roles('admin')
     @ApiParam({ name: "userId" })
     @Delete(':userId')
     remove(@Param('userId') userId: string) {

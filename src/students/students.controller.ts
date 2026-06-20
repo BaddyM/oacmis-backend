@@ -36,15 +36,18 @@ export class StudentsController {
     @ApiQuery({ name: 'page', required: false })
     @ApiQuery({ name: 'limit', required: false })
     @ApiQuery({ name: 'search', required: false })
+    @ApiQuery({ name: 'className', required: false })
     findAll(
         @Query('page') page?: string,
         @Query('limit') limit?: string,
         @Query('search') search?: string,
+        @Query('className') className?: string,
     ) {
         return this.studentsService.findAll(
             page ? parseInt(page) : 1,
             limit ? parseInt(limit) : 20,
             search,
+            className,
         );
     }
 

@@ -11,8 +11,17 @@ export class PreferencesService {
         return row ? row.value : null;
     }
 
-    set(userId: string, value: unknown) {
-        const json = (value ?? Prisma.JsonNull) as Prisma.InputJsonValue;
+    // Merge into existing preferences so independent settings (theme, profile
+    // fields, notifications, …) don't overwrite each other.
+    async set(userId: string, value: unknown) {
+        const isObject = (v: unknown): v is Record<string, unknown> =>
+            !!v && typeof v === 'object' && !Array.isArray(v);
+        let merged: unknown = value;
+        if (isObject(value)) {
+            const existing = await this.get(userId);
+            merged = { ...(isObject(existing) ? existing : {}), ...value };
+        }
+        const json = (merged ?? Prisma.JsonNull) as Prisma.InputJsonValue;
         return this.prisma.userPreference.upsert({
             where: { userId },
             create: { userId, value: json },

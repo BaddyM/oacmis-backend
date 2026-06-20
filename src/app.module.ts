@@ -18,7 +18,9 @@ import { TimetableModule } from './timetable/timetable.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { TransportModule } from './transport/transport.module';
+import { RouteAssignmentsModule } from './route-assignments/route-assignments.module';
 import { HostelModule } from './hostel/hostel.module';
+import { RoomAssignmentsModule } from './room-assignments/room-assignments.module';
 import { StudentFeesModule } from './student-fees/student-fees.module';
 import { BulkNotificationsModule } from './bulk-notifications/bulk-notifications.module';
 import { PayrollModule } from './payroll/payroll.module';
@@ -83,7 +85,9 @@ import { ResourcesModule } from './resources/resources.module';
         SubjectsModule,
         InventoryModule,
         TransportModule,
+        RouteAssignmentsModule,
         HostelModule,
+        RoomAssignmentsModule,
         StudentFeesModule,
         BulkNotificationsModule,
         PayrollModule,

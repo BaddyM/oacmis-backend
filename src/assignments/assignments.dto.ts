@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PartialType } from '@nestjs/mapped-types';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateAssignmentDto {
     @ApiProperty() @IsString() @IsNotEmpty() title!: string;
@@ -9,6 +9,7 @@ export class CreateAssignmentDto {
     @ApiProperty({ required: false }) @IsString() @IsOptional() dueDate?: string;
     @ApiProperty({ required: false }) @IsString() @IsOptional() description?: string;
     @ApiProperty({ required: false }) @IsString() @IsOptional() createdBy?: string;
+    @ApiProperty({ required: false }) @IsBoolean() @IsOptional() active?: boolean;
 }
 
 export class UpdateAssignmentDto extends PartialType(CreateAssignmentDto) {}

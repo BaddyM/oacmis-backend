@@ -16,8 +16,14 @@ export class FeePaymentsController {
     }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 200, search);
+    findAll(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('search') search?: string,
+        @Query('studentId') studentId?: string,
+    ) {
+        if (studentId) return this.service.findByStudent(studentId);
+        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 50, search);
     }
 
     @Get(':id')
