@@ -24,7 +24,9 @@ async function bootstrap() {
         SwaggerModule.setup('api', app, document); // Swagger UI at /api
     }
 
-    app.useGlobalPipes(new ValidationPipe);
+    // whitelist strips properties that have no DTO decorator, so stray fields
+    // (e.g. an `id` on create) never reach Prisma and cause validation errors.
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     app.enableCors();
 
     await app.listen(process.env.PORT ?? 3000);

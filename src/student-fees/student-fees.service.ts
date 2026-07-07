@@ -8,6 +8,7 @@ export class StudentFeesService extends BaseCrudService {
     protected delegate = this.prisma.feeRecord;
     protected entity = 'FeeRecord';
     protected searchFields = ['studentName', 'feeType', 'class'];
+    protected sessionScoped = true;
 
     constructor(prisma: PrismaService, audit: AuditService) {
         super(prisma, audit);
@@ -21,11 +22,12 @@ export class StudentFeesService extends BaseCrudService {
 
     // Narrow fee records server-side by student, class and/or term. Used by the
     // payment flow and the class fee-assignment carry-forward.
-    async findFiltered(filter: { studentId?: string; className?: string; term?: string }) {
+    async findFiltered(filter: { studentId?: string; className?: string; term?: string; year?: number }) {
         const where: any = {};
         if (filter.studentId) where.studentId = filter.studentId;
         if (filter.className) where.class = filter.className;
         if (filter.term) where.term = filter.term;
+        if (filter.year) where.year = filter.year;
         const data = await this.prisma.feeRecord.findMany({
             where,
             orderBy: { createdAt: 'desc' },
@@ -33,11 +35,13 @@ export class StudentFeesService extends BaseCrudService {
         return { data, total: data.length, totalPages: 1 };
     }
 
-    // Paginated browse list with optional text search and status filter.
-    async browse(page = 1, limit = 20, search?: string, status?: string) {
+    // Paginated browse list with optional text search, status and academic
+    // session (term + year) filters.
+    async browse(page = 1, limit = 20, search?: string, status?: string, term?: string, year?: number) {
         const where: any = {};
         if (search) where.OR = this.searchFields.map((f) => ({ [f]: { contains: search } }));
         if (status) where.status = status;
+        if (term && year) { where.term = term; where.year = year; }
         const [data, total] = await this.prisma.$transaction([
             this.prisma.feeRecord.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
             this.prisma.feeRecord.count({ where }),

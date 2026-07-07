@@ -8,6 +8,7 @@ export class AssignmentsService extends BaseCrudService {
     protected delegate = this.prisma.assignment;
     protected entity = 'Assignment';
     protected searchFields = ['title', 'subject', 'className'];
+    protected sessionScoped = true;
 
     constructor(prisma: PrismaService, audit: AuditService) {
         super(prisma, audit);

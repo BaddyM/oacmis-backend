@@ -8,6 +8,7 @@ export class QuizzesService extends BaseCrudService {
     protected delegate = this.prisma.quiz;
     protected entity = 'Quiz';
     protected searchFields = ['title', 'subject', 'classTarget', 'status'];
+    protected sessionScoped = true;
 
     constructor(prisma: PrismaService, audit: AuditService) {
         super(prisma, audit);

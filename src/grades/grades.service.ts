@@ -8,6 +8,7 @@ export class GradesService extends BaseCrudService {
     protected delegate = this.prisma.gradeRecord;
     protected entity = 'GradeRecord';
     protected searchFields = ['student', 'className', 'subject'];
+    protected sessionScoped = true;
 
     constructor(prisma: PrismaService, audit: AuditService) {
         super(prisma, audit);

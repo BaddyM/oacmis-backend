@@ -21,8 +21,8 @@ export class AssignmentsController {
     }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 200, search);
+    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string, @Query('term') term?: string, @Query('year') year?: string) {
+        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 200, search, term, year ? parseInt(year) : undefined);
     }
 
     @Get(':id')
@@ -53,8 +53,8 @@ export class AssignmentSubmissionsController {
     }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 500, search);
+    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string, @Query('term') term?: string, @Query('year') year?: string) {
+        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 500, search, term, year ? parseInt(year) : undefined);
     }
 
     @Get(':id')

@@ -1,10 +1,10 @@
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "mysql"
-    url      = env("DATABASE_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================================
@@ -14,94 +14,94 @@ datasource db {
 // ============================================================
 
 enum UserRole {
-    admin
-    teacher
-    student
-    parent
-    staff
+  admin
+  teacher
+  student
+  parent
+  staff
 }
 
 enum NotificationType {
-    info
-    warning
-    success
-    error
+  info
+  warning
+  success
+  error
 }
 
 model User {
-    id                  String               @id @default(uuid())
-    name                String
-    email               String               @unique
-    accessToken         String?
-    password            String
-    role                UserRole
-    isActive            Boolean              @default(false)
-    failedLoginCount    Int                  @default(0)
-    lockedUntil         DateTime?
-    createdAt           DateTime             @default(now())
-    updatedAt           DateTime             @default(now()) @updatedAt
-    targetNotifications Notification[]       @relation("TargetUser")
-    loginAccesses       LoginAccess[]
-    auditLogs           AuditLog[]
-    settings            Settings[]
-    passwordResetTokens PasswordResetToken[]
+  id                  String               @id @default(uuid())
+  name                String
+  email               String               @unique
+  accessToken         String?
+  password            String
+  role                UserRole
+  isActive            Boolean              @default(false)
+  failedLoginCount    Int                  @default(0)
+  lockedUntil         DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @default(now()) @updatedAt
+  targetNotifications Notification[]       @relation("TargetUser")
+  loginAccesses       LoginAccess[]
+  auditLogs           AuditLog[]
+  settings            Settings[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model PasswordResetToken {
-    id        String    @id @default(uuid())
-    userId    String
-    user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-    token     String    @unique
-    expiresAt DateTime
-    usedAt    DateTime?
-    createdAt DateTime  @default(now())
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
-    @@index([userId])
+  @@index([userId])
 }
 
 model LoginAccess {
-    id        String   @id @default(uuid())
-    userId    String
-    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model AuditLog {
-    id        String   @id @default(uuid())
-    userId    String?
-    user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-    action    String
-    entity    String
-    entityId  String?
-    before    String?  @db.LongText
-    after     String?  @db.LongText
-    createdAt DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  before    String?  @db.LongText
+  after     String?  @db.LongText
+  createdAt DateTime @default(now())
 
-    @@index([entity, entityId])
-    @@index([userId])
-    @@index([createdAt])
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model Notification {
-    id           String           @id @default(uuid())
-    title        String
-    message      String
-    type         NotificationType @default(info)
-    targetUserId String?
-    read         Boolean          @default(false)
-    createdAt    DateTime         @default(now())
-    updatedAt    DateTime         @default(now()) @updatedAt
-    targetUser   User?            @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  id           String           @id @default(uuid())
+  title        String
+  message      String
+  type         NotificationType @default(info)
+  targetUserId String?
+  read         Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @default(now()) @updatedAt
+  targetUser   User?            @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
 }
 
 model Settings {
-    id                 String   @id @default(uuid())
-    emailNotifications Boolean  @default(false)
-    userId             String
-    user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-    createdAt          DateTime @default(now())
-    updatedAt          DateTime @default(now()) @updatedAt
+  id                 String   @id @default(uuid())
+  emailNotifications Boolean  @default(false)
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
 }
 
 // ============================================================
@@ -111,527 +111,544 @@ model Settings {
 // ============================================================
 
 model Student {
-    id             String          @id @default(uuid())
-    admissionNo    String          @unique
-    firstName      String
-    lastName       String
-    className      String
-    stream         String
-    location       String?
-    email          String?
-    house          String?
-    phone          String?
-    gender         String?
-    dateOfBirth    String?
-    passportPhoto  String?         @db.LongText
-    parentName     String?
-    parentPhone    String?
-    parentEmail    String?
-    parentRelation String?
-    parentAddress  String?
-    createdAt      DateTime        @default(now())
-    updatedAt      DateTime        @default(now()) @updatedAt
+  id              String   @id @default(uuid())
+  admissionNo     String   @unique
+  firstName       String
+  lastName        String
+  className       String
+  stream          String?
+  level           String?
+  secondaryLevel  String?
+  schoolPayNumber String?
+  location        String?
+  email           String?
+  house           String?
+  phone           String?
+  gender          String?
+  dateOfBirth     String?
+  passportPhoto   String?  @db.LongText
+  parentName      String?
+  parentPhone     String?
+  parentEmail     String?
+  parentRelation  String?
+  parentAddress   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
 
-    @@index([className])
-    @@index([stream])
+  @@index([className])
+  @@index([stream])
 }
 
 model Staff {
-    id           String   @id @default(uuid())
-    firstName    String
-    lastName     String
-    role         String
-    address      String?
-    phone        String?
-    email        String?  @unique
-    salary       String?
-    isActive     Boolean  @default(true)
-    profileImage String?  @db.LongText
-    banner       String?  @db.LongText
-    socials      Json?
-    createdAt    DateTime @default(now())
-    updatedAt    DateTime @default(now()) @updatedAt
+  id           String   @id @default(uuid())
+  firstName    String
+  lastName     String
+  role         String
+  address      String?
+  phone        String?
+  email        String?  @unique
+  salary       String?
+  isActive     Boolean  @default(true)
+  profileImage String?  @db.LongText
+  banner       String?  @db.LongText
+  socials      Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
-    @@index([role])
+  @@index([role])
 }
 
 model Class {
-    id        String   @id @default(uuid())
-    name      String
-    teacher   String?
-    students  Int      @default(0)
-    schedule  String?
-    room      String?
-    color     String?
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  name      String
+  teacher   String?
+  students  Int      @default(0)
+  schedule  String?
+  room      String?
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model TimetableEntry {
-    id        String   @id @default(uuid())
-    className String
-    day       String
-    startTime String
-    endTime   String
-    subject   String
-    teacher   String?
-    room      String?
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  className String
+  day       String
+  startTime String
+  endTime   String
+  subject   String
+  teacher   String?
+  room      String?
+  term      String?
+  year      Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
-    @@index([className])
-    @@index([teacher])
+  @@index([className])
+  @@index([teacher])
 }
 
 model Subject {
-    id        String   @id @default(uuid())
-    name      String   @unique
-    code      String?
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model InventoryItem {
-    id        String   @id @default(uuid())
-    name      String
-    category  String
-    sku       String   @unique
-    quantity  Int      @default(0)
-    minStock  Int      @default(0)
-    unitPrice Float    @default(0)
-    supplier  String?
-    location  String?
-    status    String?
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  name      String
+  category  String
+  sku       String   @unique
+  quantity  Int      @default(0)
+  minStock  Int      @default(0)
+  unitPrice Float    @default(0)
+  supplier  String?
+  location  String?
+  status    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
-    @@index([category])
+  @@index([category])
 }
 
 model BusRoute {
-    id            String   @id @default(uuid())
-    routeName     String
-    busNumber     String
-    driverName    String?
-    capacity      Int      @default(0)
-    studentsCount Int      @default(0)
-    startTime     String?
-    endTime       String?
-    status        String?
-    createdAt     DateTime @default(now())
-    updatedAt     DateTime @default(now()) @updatedAt
+  id            String   @id @default(uuid())
+  routeName     String
+  busNumber     String
+  driverName    String?
+  capacity      Int      @default(0)
+  studentsCount Int      @default(0)
+  startTime     String?
+  endTime       String?
+  status        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 }
 
 model RouteAssignment {
-    id          String   @id @default(uuid())
-    routeId     String
-    studentId   String
-    studentName String
-    className   String?
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  routeId     String
+  studentId   String
+  studentName String
+  className   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
-    @@unique([routeId, studentId])
-    @@index([routeId])
+  @@unique([routeId, studentId])
+  @@index([routeId])
 }
 
 model HostelRoom {
-    id         String   @id @default(uuid())
-    hostelName String
-    roomNumber String
-    type       String?
-    gender     String?
-    capacity   Int      @default(0)
-    occupied   Int      @default(0)
-    warden     String?
-    status     String?
-    monthlyFee Float    @default(0)
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @default(now()) @updatedAt
+  id         String   @id @default(uuid())
+  hostelName String
+  roomNumber String
+  type       String?
+  gender     String?
+  capacity   Int      @default(0)
+  occupied   Int      @default(0)
+  warden     String?
+  status     String?
+  monthlyFee Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 }
 
 model RoomAssignment {
-    id          String   @id @default(uuid())
-    roomId      String
-    studentId   String
-    studentName String
-    className   String?
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  roomId      String
+  studentId   String
+  studentName String
+  className   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
-    @@unique([roomId, studentId])
-    @@index([roomId])
+  @@unique([roomId, studentId])
+  @@index([roomId])
 }
 
 model FeeRecord {
-    id          String   @id @default(uuid())
-    studentId   String?
-    studentName String
-    class       String?
-    term        String?
-    feeType     String
-    amount      Float    @default(0)
-    dueDate     String?
-    paidAmount  Float?
-    status      String?
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  studentId   String?
+  studentName String
+  class       String?
+  term        String?
+  feeType     String
+  amount      Float    @default(0)
+  dueDate     String?
+  paidAmount  Float?
+  status      String?
+  year        Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
-    @@index([studentId])
-    @@index([class])
+  @@index([studentId])
+  @@index([class])
 }
 
 model BulkNotification {
-    id             String   @id @default(uuid())
-    title          String
-    message        String   @db.Text
-    type           String
-    recipients     String?
-    recipientCount Int      @default(0)
-    sentDate       String?
-    status         String?
-    createdBy      String?
-    createdAt      DateTime @default(now())
-    updatedAt      DateTime @default(now()) @updatedAt
+  id             String   @id @default(uuid())
+  title          String
+  message        String   @db.Text
+  type           String
+  recipients     String?
+  recipientCount Int      @default(0)
+  sentDate       String?
+  status         String?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
 }
 
 model PayrollRecord {
-    id         String   @id @default(uuid())
-    employeeId String
-    name       String
-    position   String?
-    department String?
-    baseSalary Float    @default(0)
-    allowances Float    @default(0)
-    deductions Float    @default(0)
-    netSalary  Float    @default(0)
-    month      String?
-    year       Int?
-    status     String?
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @default(now()) @updatedAt
+  id         String   @id @default(uuid())
+  employeeId String
+  name       String
+  position   String?
+  department String?
+  baseSalary Float    @default(0)
+  allowances Float    @default(0)
+  deductions Float    @default(0)
+  netSalary  Float    @default(0)
+  month      String?
+  year       Int?
+  status     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 
-    @@index([employeeId])
+  @@index([employeeId])
 }
 
 model Certificate {
-    id              String   @id @default(uuid())
-    studentName     String
-    studentId       String?
-    certificateType String
-    issuedDate      String?
-    description     String?  @db.Text
-    signedBy        String?
-    createdAt       DateTime @default(now())
-    updatedAt       DateTime @default(now()) @updatedAt
+  id              String   @id @default(uuid())
+  studentName     String
+  studentId       String?
+  certificateType String
+  issuedDate      String?
+  description     String?  @db.Text
+  signedBy        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
 
-    @@index([studentId])
+  @@index([studentId])
 }
 
 model Book {
-    id              String   @id @default(uuid())
-    title           String
-    author          String?
-    isbn            String?
-    category        String?
-    totalCopies     Int      @default(0)
-    availableCopies Int      @default(0)
-    status          String?
-    createdAt       DateTime @default(now())
-    updatedAt       DateTime @default(now()) @updatedAt
+  id              String   @id @default(uuid())
+  title           String
+  author          String?
+  isbn            String?
+  category        String?
+  totalCopies     Int      @default(0)
+  availableCopies Int      @default(0)
+  status          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
 
-    @@index([category])
+  @@index([category])
 }
 
 model BorrowRecord {
-    id          String   @id @default(uuid())
-    bookTitle   String
-    studentName String
-    studentId   String?
-    borrowDate  String?
-    dueDate     String?
-    status      String?
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  bookTitle   String
+  studentName String
+  studentId   String?
+  borrowDate  String?
+  dueDate     String?
+  status      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 }
 
 model Admission {
-    applicantName String
-    dob           String?
-    gradeApplied  String?
-    parentName    String?
-    parentEmail   String?
-    parentPhone   String?
-    priorSchool   String?
-    documentUrl   String?
-    status        String?  @default("pending")
-    id            String   @id @default(uuid())
-    createdAt     DateTime @default(now())
-    updatedAt     DateTime @default(now()) @updatedAt
+  applicantName String
+  dob           String?
+  gradeApplied  String?
+  parentName    String?
+  parentEmail   String?
+  parentPhone   String?
+  priorSchool   String?
+  documentUrl   String?
+  status        String?  @default("pending")
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 }
 
 model Alumnus {
-    id             String   @id @default(uuid())
-    fullName       String
-    graduationYear Int?
-    occupation     String?
-    email          String?
-    phone          String?
-    isDonor        Boolean  @default(false)
-    createdAt      DateTime @default(now())
-    updatedAt      DateTime @default(now()) @updatedAt
+  id             String   @id @default(uuid())
+  fullName       String
+  graduationYear Int?
+  occupation     String?
+  email          String?
+  phone          String?
+  isDonor        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
 }
 
 model DisciplineIncident {
-    id          String   @id @default(uuid())
-    studentName String
-    date        String?
-    type        String
-    severity    String?
-    description String?  @db.Text
-    action      String?  @db.Text
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  studentName String
+  date        String?
+  type        String
+  severity    String?
+  description String?  @db.Text
+  action      String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 }
 
 model Event {
-    id          String   @id @default(uuid())
-    title       String
-    date        String?
-    type        String
-    audience    String?
-    description String?  @db.Text
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  title       String
+  date        String?
+  type        String
+  audience    String?
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 }
 
 model HealthRecord {
-    id               String   @id @default(uuid())
-    studentName      String
-    bloodType        String?
-    allergies        String?
-    conditions       String?  @db.Text
-    immunizations    String?
-    emergencyContact String?
-    emergencyPhone   String?
-    createdAt        DateTime @default(now())
-    updatedAt        DateTime @default(now()) @updatedAt
+  id               String   @id @default(uuid())
+  studentName      String
+  bloodType        String?
+  allergies        String?
+  conditions       String?  @db.Text
+  immunizations    String?
+  emergencyContact String?
+  emergencyPhone   String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
 }
 
 model LeaveRequest {
-    id           String   @id @default(uuid())
-    employeeName String
-    type         String
-    startDate    String?
-    endDate      String?
-    reason       String?  @db.Text
-    status       String?  @default("pending")
-    createdAt    DateTime @default(now())
-    updatedAt    DateTime @default(now()) @updatedAt
+  id           String   @id @default(uuid())
+  employeeName String
+  type         String
+  startDate    String?
+  endDate      String?
+  reason       String?  @db.Text
+  status       String?  @default("pending")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 }
 
 model GradeRecord {
-    id        String   @id @default(uuid())
-    student   String
-    className  String
-    subject   String
-    midterm   Float    @default(0)
-    final     Float    @default(0)
-    overall   String?
-    gpa       Float    @default(0)
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  student   String
+  className String
+  subject   String
+  midterm   Float    @default(0)
+  final     Float    @default(0)
+  overall   String?
+  gpa       Float    @default(0)
+  term      String?
+  year      Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
-    @@index([className])
-    @@index([subject])
+  @@index([className])
+  @@index([subject])
 }
 
 model AttendanceRecord {
-    id        String   @id @default(uuid())
-    date      String
-    className String
-    studentId String
-    status    String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  date      String
+  className String
+  studentId String
+  status    String
+  term      String?
+  year      Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
-    @@unique([date, className, studentId])
+  @@unique([date, className, studentId])
 }
 
 model ExamAssignment {
-    id           String   @id @default(uuid())
-    level        String
-    className     String
-    subject      String
-    teacherEmail String?
-    createdAt    DateTime @default(now())
-    updatedAt    DateTime @default(now()) @updatedAt
+  id           String   @id @default(uuid())
+  level        String
+  className    String
+  subject      String
+  teacherEmail String?
+  term         String?
+  year         Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 }
 
 model ExamMark {
-    id        String   @id @default(uuid())
-    level     String   @db.VarChar(120)
-    term      String   @db.VarChar(120)
-    className String   @db.VarChar(120)
-    subject   String   @db.VarChar(120)
-    topic     String   @default("") @db.VarChar(120)
-    studentId String   @db.VarChar(120)
-    score     Float    @default(0)
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  level     String   @db.VarChar(120)
+  term      String   @db.VarChar(120)
+  className String   @db.VarChar(120)
+  subject   String   @db.VarChar(120)
+  topic     String   @default("") @db.VarChar(120)
+  studentId String   @db.VarChar(120)
+  score     Float    @default(0)
+  year      Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
-    @@unique([level, term, className, subject, topic, studentId])
+  @@unique([level, term, className, subject, topic, studentId])
 }
 
 model Assignment {
-    id          String   @id @default(uuid())
-    title       String
-    subject     String
-    className   String
-    dueDate     String?
-    description String?  @db.Text
-    createdBy   String?
-    active      Boolean  @default(true)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  title       String
+  subject     String
+  className   String
+  dueDate     String?
+  description String?  @db.Text
+  createdBy   String?
+  active      Boolean  @default(true)
+  term        String?
+  year        Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
-    @@index([className])
+  @@index([className])
 }
 
 model AssignmentSubmission {
-    id           String   @id @default(uuid())
-    assignmentId String
-    studentName  String
-    content      String?  @db.Text
-    link         String?
-    submittedAt  String?
-    createdAt    DateTime @default(now())
-    updatedAt    DateTime @default(now()) @updatedAt
+  id           String   @id @default(uuid())
+  assignmentId String
+  studentName  String
+  content      String?  @db.Text
+  link         String?
+  submittedAt  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
-    @@index([assignmentId])
+  @@index([assignmentId])
 }
 
 model Quiz {
-    id              String   @id @default(uuid())
-    title           String
-    subject         String
-    classTarget     String
-    description     String?  @db.Text
-    durationMinutes Int      @default(30)
-    deadline        String
-    totalPoints     Int      @default(0)
-    status          String   @default("published")
-    createdBy       String?
-    questions       Json
-    createdAt       DateTime @default(now())
-    updatedAt       DateTime @default(now()) @updatedAt
+  id              String   @id @default(uuid())
+  title           String
+  subject         String
+  classTarget     String
+  description     String?  @db.Text
+  durationMinutes Int      @default(30)
+  deadline        String
+  totalPoints     Int      @default(0)
+  status          String   @default("published")
+  createdBy       String?
+  questions       Json
+  term            String?
+  year            Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
 }
 
 model QuizSubmission {
-    id          String   @id @default(uuid())
-    quizId      String
-    studentId   String?
-    studentName String
-    submittedAt String?
-    answers     Json
-    score       Float?
-    autoGraded  Boolean  @default(false)
-    marks       Json?
-    released    Boolean  @default(false)
-    feedback    String?  @db.Text
-    gradedBy    String?
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  quizId      String
+  studentId   String?
+  studentName String
+  submittedAt String?
+  answers     Json
+  score       Float?
+  autoGraded  Boolean  @default(false)
+  marks       Json?
+  released    Boolean  @default(false)
+  feedback    String?  @db.Text
+  gradedBy    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
-    @@index([quizId])
-    @@index([studentId])
+  @@index([quizId])
+  @@index([studentId])
 }
 
 model Message {
-    id        String   @id @default(uuid())
-    from      String?
-    to        String
-    subject   String
-    body      String?  @db.Text
-    sentAt    String?
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  from      String?
+  to        String
+  subject   String
+  body      String?  @db.Text
+  sentAt    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Blast {
-    id         String   @id @default(uuid())
-    channel    String
-    audience   String
-    subject    String
-    body       String?  @db.Text
-    recipients Int      @default(0)
-    sentAt     String?
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @default(now()) @updatedAt
+  id         String   @id @default(uuid())
+  channel    String
+  audience   String
+  subject    String
+  body       String?  @db.Text
+  recipients Int      @default(0)
+  sentAt     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 }
 
 model FeePayment {
-    id          String   @id @default(uuid())
-    studentId   String?
-    studentName String
-    invoiceRef  String
-    feeRecordId String?
-    amount      Float    @default(0)
-    method      String
-    cardLast4   String?
-    status      String?
-    paidAt      String?
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  studentId   String?
+  studentName String
+  invoiceRef  String
+  feeRecordId String?
+  amount      Float    @default(0)
+  method      String
+  cardLast4   String?
+  status      String?
+  paidAt      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
-    @@index([studentId])
+  @@index([studentId])
 }
 
 model RFIDDevice {
-    id        String   @id @default(uuid())
-    name      String
-    location  String?
-    status    String?
-    lastSync  String?
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  name      String
+  location  String?
+  status    String?
+  lastSync  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model RFIDAttendanceRecord {
-    id          String   @id @default(uuid())
-    studentId   String
-    studentName String?
-    rfidTag     String
-    timestamp   String?
-    status      String?
-    scannedBy   String?
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  studentId   String
+  studentName String?
+  rfidTag     String
+  timestamp   String?
+  status      String?
+  scannedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
-    @@index([studentId])
+  @@index([studentId])
 }
 
 model AppSetting {
-    key       String   @id
-    value     Json
-    updatedAt DateTime @default(now()) @updatedAt
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model UserPreference {
-    userId    String   @id
-    value     Json
-    updatedAt DateTime @default(now()) @updatedAt
+  userId    String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Resource {
-    id        String   @id @default(uuid())
-    title     String
-    type      String?
-    subject   String?
-    fileUrl   String?  @db.Text
-    className String?
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  title     String
+  type      String?
+  subject   String?
+  fileUrl   String?  @db.Text
+  className String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
-    @@index([subject])
+  @@index([subject])
 }

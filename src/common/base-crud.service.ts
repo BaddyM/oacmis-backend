@@ -22,15 +22,25 @@ export abstract class BaseCrudService {
     protected abstract entity: string;
     protected abstract searchFields: string[];
     protected defaultLimit = 50;
+    // When true, list queries can be filtered by the active academic session
+    // (term + year). Records are stamped with the session on create by the
+    // frontend, which sends `term`/`year` in the body.
+    protected sessionScoped = false;
 
     constructor(
         protected readonly prisma: PrismaService,
         protected readonly audit: AuditService,
     ) { }
 
-    private buildWhere(search?: string) {
-        if (!search) return {};
-        return { OR: this.searchFields.map((field) => ({ [field]: { contains: search } })) };
+    private buildWhere(search?: string, term?: string, year?: number) {
+        const and: any[] = [];
+        if (search) {
+            and.push({ OR: this.searchFields.map((field) => ({ [field]: { contains: search } })) });
+        }
+        if (this.sessionScoped && term && year) {
+            and.push({ term, year });
+        }
+        return and.length ? { AND: and } : {};
     }
 
     async create(data: any) {
@@ -44,8 +54,8 @@ export abstract class BaseCrudService {
         return record;
     }
 
-    async findAll(page = 1, limit = this.defaultLimit, search?: string) {
-        const where = this.buildWhere(search);
+    async findAll(page = 1, limit = this.defaultLimit, search?: string, term?: string, year?: number) {
+        const where = this.buildWhere(search, term, year);
         const [data, total] = (await this.prisma.$transaction([
             this.delegate.findMany({
                 where,

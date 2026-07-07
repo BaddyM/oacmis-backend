@@ -31,7 +31,13 @@ export class StudentsService {
 
     async create(dto: CreateStudentDto) {
         try {
-            const student = await this.prisma.student.create({ data: dto });
+            const data = {
+                ...dto,
+                // Admission number is optional on input — generate a unique one
+                // when it isn't provided.
+                admissionNo: dto.admissionNo?.trim() || `ADM-${Date.now()}`,
+            };
+            const student = await this.prisma.student.create({ data });
             await this.auditService.log({
                 action: 'STUDENT_CREATED',
                 entity: 'Student',
@@ -48,9 +54,14 @@ export class StudentsService {
     }
 
     async bulkCreate(students: CreateStudentDto[]) {
+        // Generate an admission number for any row that omits one.
+        const data = students.map((s, i) => ({
+            ...s,
+            admissionNo: s.admissionNo?.trim() || `ADM-${Date.now()}-${i}`,
+        }));
         // skipDuplicates ignores rows whose unique admissionNo already exists.
         const result = await this.prisma.student.createMany({
-            data: students,
+            data,
             skipDuplicates: true,
         });
         await this.auditService.log({

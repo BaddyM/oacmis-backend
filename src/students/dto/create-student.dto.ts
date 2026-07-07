@@ -2,10 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class CreateStudentDto {
-    @ApiProperty({ example: 'ADM-1001' })
+    // Admission number is optional — the server generates one when omitted.
+    @ApiProperty({ required: false, example: 'ADM-1001' })
     @IsString()
-    @IsNotEmpty()
-    admissionNo!: string;
+    @IsOptional()
+    admissionNo?: string;
 
     @ApiProperty({ example: 'Alice' })
     @IsString()
@@ -22,10 +23,30 @@ export class CreateStudentDto {
     @IsNotEmpty()
     className!: string;
 
-    @ApiProperty({ example: 'East' })
+    @ApiProperty({ example: 'Nursery' })
     @IsString()
     @IsNotEmpty()
-    stream!: string;
+    level!: string;
+
+    @ApiProperty({ example: 'male' })
+    @IsString()
+    @IsNotEmpty()
+    gender!: string;
+
+    @ApiProperty({ required: false, example: 'East' })
+    @IsString()
+    @IsOptional()
+    stream?: string;
+
+    @ApiProperty({ required: false, description: "For secondary: 'O' or 'A'" })
+    @IsString()
+    @IsOptional()
+    secondaryLevel?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    schoolPayNumber?: string;
 
     @ApiProperty({ required: false })
     @IsString()
@@ -47,11 +68,6 @@ export class CreateStudentDto {
     @IsString()
     @IsOptional()
     phone?: string;
-
-    @ApiProperty({ required: false })
-    @IsString()
-    @IsOptional()
-    gender?: string;
 
     @ApiProperty({ required: false, example: '2009-05-10' })
     @IsString()
