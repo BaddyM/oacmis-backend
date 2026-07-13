@@ -21,17 +21,29 @@ export class ExamMarksService {
     async bulkUpsert(dto: BulkUpsertMarksDto) {
         const { level, term, className, subject, marks } = dto;
         const topic = dto.topic ?? '';
-        const ops = marks.map((m) =>
-            this.prisma.examMark.upsert({
+        const ops = marks.map((m) => {
+            // Nursery entries carry a comment and no score; primary/secondary the
+            // reverse. Only overwrite the field(s) actually supplied so a save of
+            // one never wipes the other.
+            const hasScore = m.score !== undefined && m.score !== null;
+            const hasComment = m.comment !== undefined;
+            return this.prisma.examMark.upsert({
                 where: {
                     level_term_className_subject_topic_studentId: {
                         level, term, className, subject, topic, studentId: m.studentId,
                     },
                 },
-                create: { level, term, className, subject, topic, studentId: m.studentId, score: m.score },
-                update: { score: m.score },
-            }),
-        );
+                create: {
+                    level, term, className, subject, topic, studentId: m.studentId,
+                    ...(hasScore ? { score: m.score! } : {}),
+                    ...(hasComment ? { comment: m.comment! } : {}),
+                },
+                update: {
+                    ...(hasScore ? { score: m.score! } : {}),
+                    ...(hasComment ? { comment: m.comment! } : {}),
+                },
+            });
+        });
         await this.prisma.$transaction(ops);
         return { upserted: ops.length };
     }

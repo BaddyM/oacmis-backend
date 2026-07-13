@@ -11,7 +11,9 @@ import {
 
 export class MarkEntryDto {
     @ApiProperty() @IsString() @IsNotEmpty() studentId!: string;
-    @ApiProperty() @IsNumber() score!: number;
+    // Primary/secondary send a numeric score; nursery sends a comment instead.
+    @ApiProperty({ required: false }) @IsNumber() @IsOptional() score?: number;
+    @ApiProperty({ required: false }) @IsString() @IsOptional() comment?: string;
 }
 
 export class BulkUpsertMarksDto {

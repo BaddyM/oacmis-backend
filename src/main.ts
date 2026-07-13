@@ -8,8 +8,10 @@ async function bootstrap() {
     // Disable Nest's built-in body parser so we can raise the size limit —
     // student/staff records can carry base64 profile photos in the JSON body.
     const app = await NestFactory.create(AppModule, { bodyParser: false });
-    app.use(json({ limit: '10mb' }));
-    app.use(urlencoded({ extended: true, limit: '10mb' }));
+    // Generous limit: base64 profile photos plus bulk report HTML (many pupils
+    // in one PDF request) can make bodies large.
+    app.use(json({ limit: '60mb' }));
+    app.use(urlencoded({ extended: true, limit: '60mb' }));
 
     if (process.env.MODE == "Dev") {
         // Set up Swagger

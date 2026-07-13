@@ -489,6 +489,9 @@ model ExamMark {
   topic     String   @default("") @db.VarChar(120)
   studentId String   @db.VarChar(120)
   score     Float    @default(0)
+  // Nursery subjects carry no numeric score — the subject teacher writes a
+  // comment here instead (score stays 0). Primary/secondary leave this null.
+  comment   String?  @db.Text
   year      Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt

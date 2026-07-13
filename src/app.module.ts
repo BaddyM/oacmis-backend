@@ -45,6 +45,7 @@ import { RfidModule } from './rfid/rfid.module';
 import { AppSettingsModule } from './app-settings/app-settings.module';
 import { PreferencesModule } from './preferences/preferences.module';
 import { ResourcesModule } from './resources/resources.module';
+import { PdfModule } from './pdf/pdf.module';
 
 @Module({
     imports: [
@@ -112,6 +113,7 @@ import { ResourcesModule } from './resources/resources.module';
         AppSettingsModule,
         PreferencesModule,
         ResourcesModule,
+        PdfModule,
     ],
     controllers: [],
     providers: [],
