@@ -13,6 +13,11 @@ export class CreateQuizDto {
     @ApiProperty({ required: false }) @IsString() @IsOptional() status?: string;
     @ApiProperty({ required: false }) @IsString() @IsOptional() createdBy?: string;
     @ApiProperty({ type: 'array', items: { type: 'object' } }) @IsArray() questions!: any[];
+    // The service is sessionScoped, so these must be declared or the global
+    // ValidationPipe({ whitelist: true }) strips them and every quiz is stored
+    // with a null term/year that the session filter can never match.
+    @ApiProperty({ required: false }) @IsString() @IsOptional() term?: string;
+    @ApiProperty({ required: false }) @IsInt() @IsOptional() year?: number;
 }
 
 export class UpdateQuizDto extends PartialType(CreateQuizDto) {}

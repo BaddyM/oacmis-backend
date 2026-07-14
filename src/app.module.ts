@@ -22,6 +22,9 @@ import { RouteAssignmentsModule } from './route-assignments/route-assignments.mo
 import { HostelModule } from './hostel/hostel.module';
 import { RoomAssignmentsModule } from './room-assignments/room-assignments.module';
 import { StudentFeesModule } from './student-fees/student-fees.module';
+import { FeeStructuresModule } from './fee-structures/fee-structures.module';
+import { ExpensesModule } from './expenses/expenses.module';
+import { PromotionsModule } from './promotions/promotions.module';
 import { BulkNotificationsModule } from './bulk-notifications/bulk-notifications.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { CertificatesModule } from './certificates/certificates.module';
@@ -34,6 +37,7 @@ import { HealthRecordsModule } from './health-records/health-records.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 import { GradesModule } from './grades/grades.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { StaffAttendanceModule } from './staff-attendance/staff-attendance.module';
 import { ExamAssignmentsModule } from './exam-assignments/exam-assignments.module';
 import { ExamMarksModule } from './exam-marks/exam-marks.module';
 import { AssignmentsModule } from './assignments/assignments.module';
@@ -90,6 +94,9 @@ import { PdfModule } from './pdf/pdf.module';
         HostelModule,
         RoomAssignmentsModule,
         StudentFeesModule,
+        FeeStructuresModule,
+        ExpensesModule,
+        PromotionsModule,
         BulkNotificationsModule,
         PayrollModule,
         CertificatesModule,
@@ -102,6 +109,7 @@ import { PdfModule } from './pdf/pdf.module';
         LeaveRequestsModule,
         GradesModule,
         AttendanceModule,
+        StaffAttendanceModule,
         ExamAssignmentsModule,
         ExamMarksModule,
         AssignmentsModule,

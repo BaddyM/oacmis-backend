@@ -132,11 +132,16 @@ model Student {
   parentEmail     String?
   parentRelation  String?
   parentAddress   String?
+  // active | graduated | transferred. Defaulted so existing rows and every
+  // query that ignores this field keep behaving exactly as before; promotion
+  // is the only thing that sets it today.
+  status          String?  @default("active")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now()) @updatedAt
 
   @@index([className])
   @@index([stream])
+  @@index([status])
 }
 
 model Staff {
@@ -280,11 +285,79 @@ model FeeRecord {
   paidAmount  Float?
   status      String?
   year        Int?
+  // Set when the row was generated from a FeeStructure rather than entered by
+  // hand. Lets a re-run tell "already billed" from "billed manually".
+  structureId String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now()) @updatedAt
 
   @@index([studentId])
   @@index([class])
+  @@index([structureId])
+  @@index([term, year])
+}
+
+// The fee schedule for one class in one term: the line items every pupil in
+// that class is billed (tuition, lunch, transport…). Defined once by the
+// bursar, then used to generate a FeeRecord per pupil per line item.
+model FeeStructure {
+  id        String   @id @default(uuid())
+  className String
+  term      String
+  year      Int
+  // [{ name: "Tuition", amount: 450000 }, …] — kept as JSON because the set of
+  // line items varies per class and the school invents new ones each term.
+  items     Json
+  total     Float    @default(0)
+  dueDate   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([className, term, year])
+  @@index([term, year])
+}
+
+// Money out. Deliberately mirrors FeeRecord's denormalized shape so the termly
+// income-vs-expenditure statement can aggregate both the same way.
+model Expense {
+  id          String   @id @default(uuid())
+  date        String
+  category    String
+  description String?  @db.Text
+  amount      Float    @default(0)
+  payee       String?
+  method      String?
+  reference   String?
+  term        String?
+  year        Int?
+  recordedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@index([term, year])
+  @@index([category])
+  @@index([date])
+}
+
+// One pupil's end-of-year outcome. An audit trail rather than a mutation: the
+// Student row moves class, but this records where they came from, so a wrongly
+// promoted pupil can be traced and undone.
+model PromotionRecord {
+  id          String   @id @default(uuid())
+  studentId   String
+  studentName String
+  fromClass   String
+  toClass     String?
+  outcome     String
+  fromYear    Int
+  toYear      Int
+  note        String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@index([studentId])
+  @@index([fromYear, toYear])
+  @@index([outcome])
 }
 
 model BulkNotification {
@@ -432,8 +505,13 @@ model LeaveRequest {
   endDate      String?
   reason       String?  @db.Text
   status       String?  @default("pending")
+  // Owning user, stamped server-side from the JWT on create. Nullable because
+  // rows predating ownership have none; those stay admin-only visible.
+  userId       String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
+
+  @@index([userId])
 }
 
 model GradeRecord {
@@ -466,6 +544,27 @@ model AttendanceRecord {
   updatedAt DateTime @default(now()) @updatedAt
 
   @@unique([date, className, studentId])
+}
+
+// Daily staff register. Mirrors AttendanceRecord (student attendance): one row
+// per staff member per day, `date` an ISO yyyy-mm-dd string, stamped with the
+// academic session so the termly report can filter on it. `staffName` is
+// denormalized so a report over a term still names staff deleted since.
+model StaffAttendance {
+  id        String   @id @default(uuid())
+  staffId   String
+  staffName String
+  date      String
+  status    String   @default("present")
+  note      String?  @db.Text
+  term      String?
+  year      Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([staffId, date])
+  @@index([term, year])
+  @@index([date])
 }
 
 model ExamAssignment {
@@ -539,12 +638,17 @@ model Quiz {
   deadline        String
   totalPoints     Int      @default(0)
   status          String   @default("published")
+  // Display name of the author, kept for existing UI. `userId` is the field
+  // access control keys off — see LeaveRequest.userId.
   createdBy       String?
+  userId          String?
   questions       Json
   term            String?
   year            Int?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now()) @updatedAt
+
+  @@index([userId])
 }
 
 model QuizSubmission {

@@ -19,6 +19,16 @@ export class StudentFeesController {
         return this.service.create(dto);
     }
 
+    /**
+     * Two modes, told apart by `page`:
+     *
+     * - Without `page`: an unpaginated lookup returning every matching record.
+     *   The payment flow, the report sections and the arrears carry-forward all
+     *   rely on getting the complete set, not the first 20.
+     * - With `page`: the browse list, which honours search, class, status and
+     *   session filters together. Routing a paginated request into the lookup
+     *   would silently drop its status/search filters and its paging.
+     */
     @Get()
     findAll(
         @Query('page') page?: string,
@@ -27,17 +37,32 @@ export class StudentFeesController {
         @Query('studentId') studentId?: string,
         @Query('className') className?: string,
         @Query('term') term?: string,
+        @Query('year') year?: string,
         @Query('status') status?: string,
     ) {
-        if (studentId || className || term) return this.service.findFiltered({ studentId, className, term });
-        return this.service.browse(page ? parseInt(page) : 1, limit ? parseInt(limit) : 20, search, status);
+        if (!page && (studentId || className || term)) {
+            return this.service.findFiltered({ studentId, className, term, year: year ? parseInt(year) : undefined });
+        }
+        return this.service.browse(
+            page ? parseInt(page) : 1,
+            limit ? parseInt(limit) : 20,
+            search,
+            status,
+            className,
+            term,
+            year ? parseInt(year) : undefined,
+        );
     }
 
     // Accurate collection totals (not affected by pagination). Declared before
     // ':id' so it isn't captured by the param route.
     @Get('summary')
-    summary() {
-        return this.service.summary();
+    summary(
+        @Query('term') term?: string,
+        @Query('year') year?: string,
+        @Query('className') className?: string,
+    ) {
+        return this.service.summary(term, year ? parseInt(year) : undefined, className);
     }
 
     @Get(':id')

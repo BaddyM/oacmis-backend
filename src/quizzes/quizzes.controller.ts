@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthedRequest } from 'src/common/authed-request';
 import { QuizzesService, QuizSubmissionsService } from './quizzes.service';
 import {
     CreateQuizDto,
@@ -16,28 +17,30 @@ export class QuizzesController {
     constructor(private readonly service: QuizzesService) { }
 
     @Post()
-    create(@Body() dto: CreateQuizDto) {
-        return this.service.create(dto);
+    create(@Req() req: AuthedRequest, @Body() dto: CreateQuizDto) {
+        return this.service.createOwned(dto, req.user);
     }
 
+    // A teacher sees only the quizzes they authored; admins see all, and
+    // students keep the full published list they sit quizzes from.
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string, @Query('term') term?: string, @Query('year') year?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 200, search, term, year ? parseInt(year) : undefined);
+    findAll(@Req() req: AuthedRequest, @Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string, @Query('term') term?: string, @Query('year') year?: string) {
+        return this.service.findAllOwned(req.user, page ? parseInt(page) : 1, limit ? parseInt(limit) : 200, search, term, year ? parseInt(year) : undefined);
     }
 
     @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.service.findOne(id);
+    findOne(@Req() req: AuthedRequest, @Param('id') id: string) {
+        return this.service.findOneOwned(id, req.user);
     }
 
     @Patch(':id')
-    update(@Param('id') id: string, @Body() dto: UpdateQuizDto) {
-        return this.service.update(id, dto);
+    update(@Req() req: AuthedRequest, @Param('id') id: string, @Body() dto: UpdateQuizDto) {
+        return this.service.updateOwned(id, dto, req.user);
     }
 
     @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.service.remove(id);
+    remove(@Req() req: AuthedRequest, @Param('id') id: string) {
+        return this.service.removeOwned(id, req.user);
     }
 }
 

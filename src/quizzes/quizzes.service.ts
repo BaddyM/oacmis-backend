@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditService } from 'src/audit/audit.service';
 import { BaseCrudService } from 'src/common/base-crud.service';
+import { OwnedCrudService } from 'src/common/owned-crud.service';
 
 @Injectable()
-export class QuizzesService extends BaseCrudService {
+export class QuizzesService extends OwnedCrudService {
     protected delegate = this.prisma.quiz;
     protected entity = 'Quiz';
     protected searchFields = ['title', 'subject', 'classTarget', 'status'];

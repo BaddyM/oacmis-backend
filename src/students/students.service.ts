@@ -72,7 +72,7 @@ export class StudentsService {
         return { requested: students.length, created: result.count };
     }
 
-    async findAll(page = 1, limit = 20, search?: string, className?: string) {
+    async findAll(page = 1, limit = 20, search?: string, className?: string, status?: string) {
         const where: Prisma.StudentWhereInput = {};
         if (search) {
             where.OR = [
@@ -87,6 +87,9 @@ export class StudentsService {
         }
         // Exact class match (used to load a class roster) — narrows server-side.
         if (className) where.className = className;
+        // Opt-in only: callers that don't ask still see every pupil, so nothing
+        // that predates the status field changes behaviour.
+        if (status) where.status = status;
 
         const [data, total] = await this.prisma.$transaction([
             this.prisma.student.findMany({

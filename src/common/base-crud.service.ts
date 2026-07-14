@@ -32,7 +32,7 @@ export abstract class BaseCrudService {
         protected readonly audit: AuditService,
     ) { }
 
-    private buildWhere(search?: string, term?: string, year?: number) {
+    protected buildWhere(search?: string, term?: string, year?: number) {
         const and: any[] = [];
         if (search) {
             and.push({ OR: this.searchFields.map((field) => ({ [field]: { contains: search } })) });
