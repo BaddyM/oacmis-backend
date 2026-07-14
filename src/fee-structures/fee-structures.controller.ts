@@ -18,10 +18,10 @@ export class FeeStructuresController {
         return this.service.create(dto);
     }
 
-    // Bill every pupil in the class for this structure's term.
+    // Bill this structure's term to the whole class, or to dto.studentIds only.
     @Post(':id/generate')
     generate(@Param('id') id: string, @Body() dto: GenerateInvoicesDto) {
-        return this.service.generate(id, dto.carryForward ?? true);
+        return this.service.generate(id, dto.carryForward ?? true, dto.studentIds);
     }
 
     @Get()

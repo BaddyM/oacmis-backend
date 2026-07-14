@@ -38,4 +38,12 @@ export class GenerateInvoicesDto {
     // Roll each pupil's unpaid balance from the previous term into this term as
     // its own "Arrears" line.
     @ApiProperty({ default: true }) @IsBoolean() @IsOptional() carryForward?: boolean;
+
+    // Bill only these pupils. Omit (or send empty) to bill the whole class —
+    // that stays the default, since billing everyone is the common case.
+    @ApiProperty({ required: false, type: [String] })
+    @IsArray()
+    @IsOptional()
+    @IsString({ each: true })
+    studentIds?: string[];
 }

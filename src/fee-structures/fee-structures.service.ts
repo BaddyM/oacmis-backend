@@ -12,7 +12,7 @@ export interface GenerateResult {
     className: string;
     term: string;
     year: number;
-    /** Pupils on the class roster. */
+    /** Pupils actually billed by this run — the whole roster, or the chosen few. */
     students: number;
     /** FeeRecords written. */
     created: number;
@@ -21,6 +21,8 @@ export interface GenerateResult {
     billedTotal: number;
     arrearsTotal: number;
     arrearsFrom: string | null;
+    /** True when the run targeted a chosen subset rather than the full class. */
+    partial: boolean;
 }
 
 // Terms run 1 → 2 → 3 within a year, so the term before Term 1 is Term 3 of the
@@ -65,26 +67,47 @@ export class FeeStructuresService extends BaseCrudService {
     }
 
     /**
-     * Bill every pupil in the structure's class for this term.
+     * Bill the structure's class for this term — either every active pupil, or
+     * only `studentIds` when the bursar picked a subset (a bursary group, late
+     * admissions, pupils who take the bus while the rest don't).
      *
      * Idempotent per (pupil, line item): re-running after adding a line item
      * bills only the new one, so an accidental double-click can't double-charge
      * a parent. The whole run is one transaction — a partial roster billed
      * halfway would be worse than nothing.
      */
-    async generate(id: string, carryForward = true): Promise<GenerateResult> {
+    async generate(id: string, carryForward = true, studentIds?: string[]): Promise<GenerateResult> {
         const structure = await this.prisma.feeStructure.findUnique({ where: { id } });
         if (!structure) throw new NotFoundException('FeeStructure not found');
 
         const items = this.lineItems(structure);
         if (items.length === 0) throw new BadRequestException('This fee structure has no line items');
 
+        const partial = !!studentIds?.length;
         const students = await this.prisma.student.findMany({
-            where: { className: structure.className, status: 'active' },
+            where: {
+                className: structure.className,
+                status: 'active',
+                ...(partial ? { id: { in: studentIds } } : {}),
+            },
             select: { id: true, firstName: true, lastName: true },
         });
         if (students.length === 0) {
-            throw new BadRequestException(`No active pupils in ${structure.className}`);
+            throw new BadRequestException(
+                partial
+                    ? `None of the chosen pupils are active members of ${structure.className}`
+                    : `No active pupils in ${structure.className}`,
+            );
+        }
+        // Every chosen id must be a live pupil of this class. Without this a
+        // stale page could bill someone who has since moved class or left, and
+        // the run would silently look successful.
+        if (partial && students.length !== studentIds!.length) {
+            const found = new Set(students.map((s) => s.id));
+            const missing = studentIds!.filter((sid) => !found.has(sid)).length;
+            throw new BadRequestException(
+                `${missing} chosen pupil(s) are no longer active in ${structure.className} — reload the roster and try again`,
+            );
         }
 
         // What each pupil already has for this term, so we never bill twice.
@@ -152,6 +175,7 @@ export class FeeStructuresService extends BaseCrudService {
             billedTotal,
             arrearsTotal,
             arrearsFrom: carryForward && prev ? `${prev.term} ${prev.year}` : null,
+            partial,
         };
 
         await this.audit.log({
