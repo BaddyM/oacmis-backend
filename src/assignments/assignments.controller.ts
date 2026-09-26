@@ -1,6 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
+import { FeesClearedGuard } from 'src/auth/fees-cleared.guard';
+import { RequiresClearedFees } from 'src/auth/requires-cleared-fees.decorator';
 import { AssignmentsService, AssignmentSubmissionsService } from './assignments.service';
 import {
     CreateAssignmentDto,
@@ -10,7 +14,10 @@ import {
 } from './assignments.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard, FeesClearedGuard)
+@RequiresPage('assignments')
+// Pupils lose access while they owe fees; staff are unaffected.
+@RequiresClearedFees()
 @Controller('assignments')
 export class AssignmentsController {
     constructor(private readonly service: AssignmentsService) { }
@@ -42,7 +49,10 @@ export class AssignmentsController {
 }
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard, FeesClearedGuard)
+@RequiresPage('assignments')
+// Pupils lose access while they owe fees; staff are unaffected.
+@RequiresClearedFees()
 @Controller('assignment-submissions')
 export class AssignmentSubmissionsController {
     constructor(private readonly service: AssignmentSubmissionsService) { }

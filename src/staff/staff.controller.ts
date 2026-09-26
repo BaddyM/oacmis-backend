@@ -11,12 +11,16 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
+import { STAFF_DIRECTORY_PAGES } from 'src/auth/page-groups';
 import { StaffService } from './staff.service';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage(...STAFF_DIRECTORY_PAGES)
 @Controller('staff')
 export class StaffController {
     constructor(private readonly staffService: StaffService) { }

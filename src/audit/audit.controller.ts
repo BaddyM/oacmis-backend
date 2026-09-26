@@ -1,10 +1,13 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { AuditService } from './audit.service';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('settings', 'users')
 @Controller('audit')
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}

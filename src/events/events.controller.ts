@@ -1,11 +1,14 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { EventsService } from './events.service';
 import { CreateEventDto, UpdateEventDto } from './events.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('events')
 @Controller('events')
 export class EventsController {
     constructor(private readonly service: EventsService) { }

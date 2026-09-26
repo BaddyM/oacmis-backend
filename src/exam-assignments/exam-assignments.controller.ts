@@ -1,11 +1,15 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
+import { RESULTS_PAGES } from 'src/auth/page-groups';
 import { ExamAssignmentsService } from './exam-assignments.service';
 import { CreateExamAssignmentDto, UpdateExamAssignmentDto } from './exam-assignments.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage(...RESULTS_PAGES)
 @Controller('exam-assignments')
 export class ExamAssignmentsController {
     constructor(private readonly service: ExamAssignmentsService) { }

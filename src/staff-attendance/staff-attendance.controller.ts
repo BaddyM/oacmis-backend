@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { StaffAttendanceService } from './staff-attendance.service';
@@ -12,8 +14,9 @@ import {
 
 // The staff register is HR data: only an admin may read or write it.
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
 @Roles('admin')
+@RequiresPage('staff-attendance', 'reports')
 @Controller('staff-attendance')
 export class StaffAttendanceController {
     constructor(private readonly service: StaffAttendanceService) { }

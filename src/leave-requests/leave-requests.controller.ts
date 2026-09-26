@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { AuthedRequest } from 'src/common/authed-request';
 import { LeaveRequestsService } from './leave-requests.service';
 import { CreateLeaveRequestDto, UpdateLeaveRequestDto } from './leave-requests.dto';
@@ -8,7 +10,8 @@ import { CreateLeaveRequestDto, UpdateLeaveRequestDto } from './leave-requests.d
 // Leave requests belong to the user who raised them: an admin sees every
 // request and approves them, everyone else only ever sees their own.
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('leave-requests')
 @Controller('leave-requests')
 export class LeaveRequestsController {
     constructor(private readonly service: LeaveRequestsService) { }

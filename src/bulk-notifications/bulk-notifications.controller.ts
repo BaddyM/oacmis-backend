@@ -1,11 +1,15 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { BulkNotificationsService } from './bulk-notifications.service';
 import { CreateBulkNotificationDto, UpdateBulkNotificationDto } from './bulk-notifications.dto';
+import { parseListQuery } from 'src/common/list-query';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('bulk-communication', 'notifications')
 @Controller('bulk-notifications')
 export class BulkNotificationsController {
     constructor(private readonly service: BulkNotificationsService) { }
@@ -16,8 +20,9 @@ export class BulkNotificationsController {
     }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 50, search);
+    findAll(@Query() query: Record<string, string>) {
+        const q = parseListQuery(query);
+        return this.service.findAll(q.page, q.limit, q.search, q.term, q.year, q.filters);
     }
 
     @Get(':id')

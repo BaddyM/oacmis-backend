@@ -1,11 +1,14 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { AttendanceService } from './attendance.service';
 import { UpsertAttendanceDto } from './attendance.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('attendance', 'rfid-attendance', 'reports')
 @Controller('attendance')
 export class AttendanceController {
     constructor(private readonly service: AttendanceService) { }

@@ -1,13 +1,17 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
+import { FEES_PAGES } from 'src/auth/page-groups';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { StudentFeesService } from './student-fees.service';
 import { CreateFeeRecordDto, UpdateFeeRecordDto } from './student-fees.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
+@RequiresPage(...FEES_PAGES)
 @Controller('student-fees')
 export class StudentFeesController {
     constructor(private readonly service: StudentFeesService) { }

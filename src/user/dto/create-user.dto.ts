@@ -1,11 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsArray, IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export enum UserRole {
     admin = "admin",
     teacher = "teacher",
     student = "student",
-    parent = "parent",
     staff = "staff",
 }
 
@@ -39,4 +38,12 @@ export class CreateUserDto {
     @IsBoolean()
     @IsOptional()
     isActive?: boolean;
+
+    // Page keys this user may open, overriding the defaults for their role.
+    // Omit to keep role defaults; send null to clear an existing override.
+    @ApiProperty({ name: "permissions", type: [String], required: false, example: ["dashboard", "students"] })
+    @IsArray()
+    @IsString({ each: true })
+    @IsOptional()
+    permissions?: string[] | null;
 }

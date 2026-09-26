@@ -1,13 +1,17 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { InventoryService } from './inventory.service';
+import { parseListQuery } from 'src/common/list-query';
 import { CreateInventoryItemDto, UpdateInventoryItemDto } from './inventory.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
+@RequiresPage('inventory')
 @Controller('inventory')
 export class InventoryController {
     constructor(private readonly service: InventoryService) { }
@@ -20,8 +24,18 @@ export class InventoryController {
     }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 50, search);
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
+    @ApiQuery({ name: 'search', required: false, description: 'Matches name, sku, supplier or category' })
+    @ApiQuery({ name: 'category', required: false })
+    @ApiQuery({ name: 'supplier', required: false })
+    @ApiQuery({ name: 'location', required: false })
+    @ApiQuery({ name: 'minQty', required: false })
+    @ApiQuery({ name: 'maxQty', required: false })
+    @ApiQuery({ name: 'status', required: false, description: 'in-stock | low-stock | out-of-stock (derived from quantity vs minStock)' })
+    findAll(@Query() query: Record<string, string>) {
+        const q = parseListQuery(query);
+        return this.service.findAll(q.page, q.limit, q.search, q.term, q.year, q.filters);
     }
 
     @Get(':id')

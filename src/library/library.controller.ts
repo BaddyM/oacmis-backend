@@ -1,7 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { BooksService, BorrowsService } from './library.service';
+import { parseListQuery } from 'src/common/list-query';
 import {
     CreateBookDto,
     UpdateBookDto,
@@ -10,7 +13,8 @@ import {
 } from './library.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('library')
 @Controller('library/books')
 export class BooksController {
     constructor(private readonly service: BooksService) { }
@@ -21,8 +25,9 @@ export class BooksController {
     }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 200, search);
+    findAll(@Query() query: Record<string, string>) {
+        const q = parseListQuery(query);
+        return this.service.findAll(q.page, q.limit, q.search, q.term, q.year, q.filters);
     }
 
     @Get(':id')
@@ -42,7 +47,8 @@ export class BooksController {
 }
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('library')
 @Controller('library/borrows')
 export class BorrowsController {
     constructor(private readonly service: BorrowsService) { }
@@ -53,8 +59,9 @@ export class BorrowsController {
     }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 200, search);
+    findAll(@Query() query: Record<string, string>) {
+        const q = parseListQuery(query);
+        return this.service.findAll(q.page, q.limit, q.search, q.term, q.year, q.filters);
     }
 
     @Get(':id')

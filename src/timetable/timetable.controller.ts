@@ -11,12 +11,15 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { TimetableService } from './timetable.service';
 import { CreateTimetableEntryDto } from './dto/create-timetable-entry.dto';
 import { UpdateTimetableEntryDto } from './dto/update-timetable-entry.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('timetable')
 @Controller('timetable')
 export class TimetableController {
     constructor(private readonly timetableService: TimetableService) { }

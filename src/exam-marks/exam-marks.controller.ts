@@ -1,11 +1,15 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
+import { RESULTS_PAGES } from 'src/auth/page-groups';
 import { ExamMarksService } from './exam-marks.service';
 import { BulkUpsertMarksDto } from './exam-marks.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage(...RESULTS_PAGES)
 @Controller('exam-marks')
 export class ExamMarksController {
     constructor(private readonly service: ExamMarksService) { }

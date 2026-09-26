@@ -1,13 +1,17 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { TransportService } from './transport.service';
 import { CreateBusRouteDto, UpdateBusRouteDto } from './transport.dto';
+import { parseListQuery } from 'src/common/list-query';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
+@RequiresPage('transport')
 @Controller('transport')
 export class TransportController {
     constructor(private readonly service: TransportService) { }
@@ -20,8 +24,9 @@ export class TransportController {
     }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 50, search);
+    findAll(@Query() query: Record<string, string>) {
+        const q = parseListQuery(query);
+        return this.service.findAll(q.page, q.limit, q.search, q.term, q.year, q.filters);
     }
 
     @Get(':id')

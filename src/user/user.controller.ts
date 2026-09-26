@@ -7,6 +7,8 @@ import { ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -17,6 +19,12 @@ export class UserController {
         private readonly prisma: PrismaService,
     ) { }
 
+    // Creating accounts is an admin action. Left unauthenticated, anyone who
+    // could reach the API could mint themselves an admin account, which would
+    // make every other permission check on this server decorative.
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard, RolesGuard)
+    @Roles('admin')
     @Post("create")
     async create(
         @Res() res: Response,
@@ -42,8 +50,9 @@ export class UserController {
     }
 
     @ApiBearerAuth()
-    @UseGuards(AuthGuard, RolesGuard)
+    @UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
     @Roles('admin')
+    @RequiresPage('users')
     @Get("all")
     @ApiQuery({ name: "page" })
     @ApiQuery({ name: "limit" })
@@ -53,8 +62,9 @@ export class UserController {
     }
 
     @ApiBearerAuth()
-    @UseGuards(AuthGuard, RolesGuard)
+    @UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
     @Roles('admin')
+    @RequiresPage('users', 'settings')
     @Get("loginAccess")
     @ApiQuery({ name: "page" })
     @ApiQuery({ name: "limit" })
@@ -71,8 +81,9 @@ export class UserController {
     }
 
     @ApiBearerAuth()
-    @UseGuards(AuthGuard, RolesGuard)
+    @UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
     @Roles('admin')
+    @RequiresPage('users')
     @ApiParam({ name: "userId" })
     @Patch(':userId')
     async update(@Param('userId') userId: string, @Body() updateUserDto: UpdateUserDto) {
@@ -81,8 +92,9 @@ export class UserController {
     }
 
     @ApiBearerAuth()
-    @UseGuards(AuthGuard, RolesGuard)
+    @UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
     @Roles('admin')
+    @RequiresPage('users')
     @ApiParam({ name: "userId" })
     @Delete(':userId')
     remove(@Param('userId') userId: string) {

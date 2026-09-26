@@ -1,6 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
+import { FeesClearedGuard } from 'src/auth/fees-cleared.guard';
+import { RequiresClearedFees } from 'src/auth/requires-cleared-fees.decorator';
 import { AuthedRequest } from 'src/common/authed-request';
 import { QuizzesService, QuizSubmissionsService } from './quizzes.service';
 import {
@@ -11,7 +15,10 @@ import {
 } from './quizzes.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard, FeesClearedGuard)
+@RequiresPage('quizzes')
+// Pupils lose access while they owe fees; staff are unaffected.
+@RequiresClearedFees()
 @Controller('quizzes')
 export class QuizzesController {
     constructor(private readonly service: QuizzesService) { }
@@ -45,7 +52,10 @@ export class QuizzesController {
 }
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard, FeesClearedGuard)
+@RequiresPage('quizzes')
+// Pupils lose access while they owe fees; staff are unaffected.
+@RequiresClearedFees()
 @Controller('quiz-submissions')
 export class QuizSubmissionsController {
     constructor(private readonly service: QuizSubmissionsService) { }

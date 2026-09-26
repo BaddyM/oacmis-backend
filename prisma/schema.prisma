@@ -17,7 +17,6 @@ enum UserRole {
   admin
   teacher
   student
-  parent
   staff
 }
 
@@ -32,9 +31,21 @@ model User {
   id                  String               @id @default(uuid())
   name                String
   email               String               @unique
-  accessToken         String?
+  // JWTs run past MySQL's default VARCHAR(191) once an email is long enough,
+  // which silently broke login for those users. Widened, and kept a VarChar
+  // rather than Text because AuthGuard looks users up by this column.
+  accessToken         String?              @db.VarChar(512)
   password            String
   role                UserRole
+  // Per-user page access override. null => fall back to the role's default
+  // page set (see src/lib/pageRegistry.tsx in the frontend). When set, it is a
+  // JSON array of page keys the user is allowed to open.
+  permissions         Json?
+  // The pupil this login belongs to. Set for every auto-provisioned student
+  // account; null for staff and admin logins. Lets /students/me resolve the
+  // caller's record directly instead of guessing from their email.
+  studentId           String?              @unique
+  student             Student?             @relation(fields: [studentId], references: [id], onDelete: SetNull)
   isActive            Boolean              @default(false)
   failedLoginCount    Int                  @default(0)
   lockedUntil         DateTime?
@@ -113,6 +124,9 @@ model Settings {
 model Student {
   id              String   @id @default(uuid())
   admissionNo     String   @unique
+  // Login identifier: the intake year followed by six digits, e.g. 2026483920.
+  // Separate from admissionNo, which keeps whatever the school already issued.
+  studentNumber   String?  @unique
   firstName       String
   lastName        String
   className       String
@@ -136,6 +150,8 @@ model Student {
   // query that ignores this field keep behaving exactly as before; promotion
   // is the only thing that sets it today.
   status          String?  @default("active")
+  // The auto-provisioned login for this pupil (back-relation of User.student).
+  user            User?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now()) @updatedAt
 

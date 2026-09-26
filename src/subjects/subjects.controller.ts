@@ -11,16 +11,22 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { SubjectsService } from './subjects.service';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+// Reads stay open to any signed-in user: class and subject names are
+// reference data that timetables, fee structures and the pupil portal all
+// need. Only changing the catalogue requires the page itself.
+@UseGuards(AuthGuard, PagePermissionsGuard)
 @Controller('subjects')
 export class SubjectsController {
     constructor(private readonly subjectsService: SubjectsService) { }
 
+    @RequiresPage('subjects')
     @Post()
     create(@Body() dto: CreateSubjectDto) {
         return this.subjectsService.create(dto);
@@ -48,12 +54,14 @@ export class SubjectsController {
         return this.subjectsService.findOne(id);
     }
 
+    @RequiresPage('subjects')
     @Patch(':id')
     @ApiParam({ name: 'id' })
     update(@Param('id') id: string, @Body() dto: UpdateSubjectDto) {
         return this.subjectsService.update(id, dto);
     }
 
+    @RequiresPage('subjects')
     @Delete(':id')
     @ApiParam({ name: 'id' })
     remove(@Param('id') id: string) {

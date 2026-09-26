@@ -1,13 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { RoomAssignmentsService } from './room-assignments.service';
 import { CreateRoomAssignmentDto } from './room-assignments.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
+@RequiresPage('hostel')
 @Controller('room-assignments')
 export class RoomAssignmentsController {
     constructor(private readonly service: RoomAssignmentsService) { }

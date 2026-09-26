@@ -20,101 +20,107 @@ export class AuthService {
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
     ) { }
 
-    async login(email: string, password: string) {
+    /**
+     * Sign in with an email address (staff) or a student number (pupils).
+     * The parameter is still called `identifier` rather than `email` because a
+     * pupil's credential is their student number — resolved through the User →
+     * Student link rather than a second copy of the number on the user row.
+     */
+    async login(identifier: string, password: string) {
         try {
-            const existing = await this.prisma.user.findUnique({
-                where: { email },
-                select: { id: true, lockedUntil: true, failedLoginCount: true },
+            const login = `${identifier ?? ''}`.trim();
+
+            const account = await this.prisma.user.findFirst({
+                where: {
+                    OR: [
+                        { email: login },
+                        { student: { studentNumber: login } },
+                    ],
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    password: true,
+                    role: true,
+                    isActive: true,
+                    permissions: true,
+                    lockedUntil: true,
+                    failedLoginCount: true,
+                    accessToken: true,
+                    student: { select: { studentNumber: true } },
+                },
             });
-            if (existing?.lockedUntil && existing.lockedUntil > new Date()) {
+
+            // Same message whether the account is missing or the password is
+            // wrong, so the endpoint cannot be used to enumerate student numbers.
+            if (!account) throw new UnauthorizedException("User not authorized");
+
+            if (account.lockedUntil && account.lockedUntil > new Date()) {
                 throw new UnauthorizedException(
-                    `Account is locked until ${existing.lockedUntil.toISOString()}. Try again later or reset your password.`,
+                    `Account is locked until ${account.lockedUntil.toISOString()}. Try again later or reset your password.`,
                 );
             }
 
-            const validate: boolean = await this.userService.validateUser(email, password);
-            if (!validate) {
-                if (existing) {
-                    const newCount = (existing.failedLoginCount ?? 0) + 1;
-                    const willLock = newCount >= MAX_FAILED_ATTEMPTS;
-                    await this.prisma.user.update({
-                        where: { id: existing.id },
-                        data: {
-                            failedLoginCount: newCount,
-                            lockedUntil: willLock
-                                ? new Date(Date.now() + LOCK_DURATION_MS)
-                                : null,
-                        },
-                    });
-                }
-                // Throwing here goes to the catch block
+            const valid: boolean = await bcrypt.compare(`${password}`, account.password);
+            if (!valid) {
+                const newCount = (account.failedLoginCount ?? 0) + 1;
+                const willLock = newCount >= MAX_FAILED_ATTEMPTS;
+                await this.prisma.user.update({
+                    where: { id: account.id },
+                    data: {
+                        failedLoginCount: newCount,
+                        lockedUntil: willLock ? new Date(Date.now() + LOCK_DURATION_MS) : null,
+                    },
+                });
                 throw new UnauthorizedException("User not authorized");
             }
 
-            if (validate) {
-                const payload = {
-                    email,
-                }
-
-                const accessToken = this.jwtService.sign(payload, {
-                    secret: process.env.SYSTEM_SECRET,
-                    expiresIn: '24hr',
-                });
-
-                const check_user = await this.prisma.user.findFirst({
-                    where: {
-                        email,
-                        isActive: true,
-                    }
-                });
-
-                if (!check_user) {
-                    throw new UnauthorizedException("Account is inactive or not found");
-                }
-
-                //Delete previous token from cache
-                const previous_access_token = await this.prisma.user.findFirst({
-                    where: {
-                        email,
-                    },
-                    select: {
-                        accessToken: true,
-                    }
-                });
-                const oldCacheKey = `auth_session:${previous_access_token}`;
-                await this.cacheManager.del(oldCacheKey)
-
-                const user = await this.prisma.user.update({
-                    where: {
-                        email,
-                    },
-                    data: {
-                        accessToken,
-                        failedLoginCount: 0,
-                        lockedUntil: null,
-                    }
-                });
-
-                //Add new token in cache — store the {id, role} shape that AuthGuard expects on request.user
-                const cacheKey = `auth_session:${user.accessToken}`
-                await this.cacheManager.set(cacheKey, { id: user.id, role: user.role }, 300000) //Cache set for 5 minutes
-
-                //Add to login access
-                await this.prisma.loginAccess.create({
-                    data: {
-                        userId: user.id,
-                    }
-                })
-
-                return {
-                    accessToken,
-                    role: user.role,
-                    userId: user.id,
-                    name: user.name,
-                    isActive: user.isActive,
-                    email: user.email
-                };
+            if (!account.isActive) {
+                throw new UnauthorizedException("Account is inactive or not found");
             }
+
+            const accessToken = this.jwtService.sign(
+                { email: account.email },
+                { secret: process.env.SYSTEM_SECRET, expiresIn: '24hr' },
+            );
+
+            // Drop the session cached against the previous token.
+            if (account.accessToken) {
+                await this.cacheManager.del(`auth_session:${account.accessToken}`);
+            }
+
+            const user = await this.prisma.user.update({
+                where: { id: account.id },
+                data: { accessToken, failedLoginCount: 0, lockedUntil: null },
+            });
+
+            //Add new token in cache — store the {id, role, permissions} shape that AuthGuard expects on request.user
+            await this.cacheManager.set(
+                `auth_session:${accessToken}`,
+                { id: user.id, role: user.role, permissions: user.permissions ?? null },
+                300000,
+            ); //Cache set for 5 minutes
+
+            await this.prisma.loginAccess.create({ data: { userId: user.id } });
+
+            const studentNumber = account.student?.studentNumber ?? null;
+
+            return {
+                accessToken,
+                role: user.role,
+                userId: user.id,
+                name: user.name,
+                isActive: user.isActive,
+                email: user.email,
+                permissions: user.permissions ?? null,
+                studentNumber,
+                // A pupil who has never changed their password is still using
+                // their student number as one; the portal nudges them to change it.
+                usingDefaultPassword: studentNumber
+                    ? await bcrypt.compare(studentNumber, account.password)
+                    : false,
+            };
         } catch (e) {
             // If it's already a NestJS defined error (401, 403, 404), just re-throw it
             if (e instanceof UnauthorizedException || e instanceof HttpException) {
@@ -128,6 +134,39 @@ export class AuthService {
 
             throw new InternalServerErrorException("Failed to login the user");
         }
+    }
+
+    /**
+     * Let a signed-in user change their own password. Pupils start on their
+     * student number as a password, so this is the route that gets them off it.
+     * The school's password policy applies here exactly as it does to an admin
+     * setting someone's password.
+     */
+    async change_password(userId: string, currentPassword: string, newPassword: string) {
+        const account = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, password: true, accessToken: true },
+        });
+        if (!account) throw new UnauthorizedException('Account not found');
+
+        const valid: boolean = await bcrypt.compare(`${currentPassword}`, account.password);
+        if (!valid) throw new BadRequestException('Your current password is incorrect');
+
+        if (`${currentPassword}` === `${newPassword}`) {
+            throw new BadRequestException('The new password must be different from the current one');
+        }
+
+        await this.userService.validatePassword(newPassword);
+        await this.prisma.user.update({
+            where: { id: account.id },
+            data: {
+                password: await bcrypt.hash(`${newPassword}`, 10),
+                failedLoginCount: 0,
+                lockedUntil: null,
+            },
+        });
+
+        return { ok: true };
     }
 
     async logout(userId: string) {

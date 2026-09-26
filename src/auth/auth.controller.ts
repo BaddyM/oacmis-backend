@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Headers, Inject, InternalServerErrorException, Post, Query, Res, UseGuards } from '@nestjs/common';
-import { LoginDto } from './dto/login.dto';
+import { Body, Controller, Get, Headers, Inject, InternalServerErrorException, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { ChangePasswordDto, LoginDto } from './dto/login.dto';
 import { AuthService } from './auth.service';
 import { Response } from 'express';
 import { AuthGuard } from './auth.guard';
@@ -22,6 +22,16 @@ export class AuthController {
         await this.cache.del("/user/loginAccess?page=1&limit=10")
         const data = await this.authService.login(loginData.email, loginData.password);
         return data;
+    }
+
+    // Self-service password change. Any signed-in user may change their own
+    // password; pupils need it because their initial password is their student
+    // number. There is no userId parameter — it always acts on the caller.
+    @Post("me/password")
+    @UseGuards(AuthGuard)
+    @ApiBearerAuth()
+    async change_password(@Req() req: any, @Body() body: ChangePasswordDto) {
+        return this.authService.change_password(req.user.id, body.currentPassword, body.newPassword);
     }
 
     @Post("password-reset/request")

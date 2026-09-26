@@ -44,21 +44,33 @@ export abstract class OwnedCrudService extends BaseCrudService {
         search?: string,
         term?: string,
         year?: number,
+        filters?: Record<string, string>,
     ) {
-        if (!this.isOwnerScoped(user)) return super.findAll(page, limit, search, term, year);
+        if (!this.isOwnerScoped(user)) return super.findAll(page, limit, search, term, year, filters);
 
+        const paging = this.normalisePaging(page, limit);
         // Re-derive the base filter, then AND the ownership constraint onto it.
-        const where = { AND: [this.buildWhere(search, term, year), { userId: user.id }] };
+        const where = { AND: [this.buildWhere(search, term, year, filters), { userId: user.id }] };
         const [data, total] = (await this.prisma.$transaction([
             this.delegate.findMany({
                 where,
                 orderBy: { createdAt: 'desc' },
-                skip: (page - 1) * limit,
-                take: limit,
+                skip: (paging.page - 1) * paging.limit,
+                take: paging.limit,
             }),
             this.delegate.count({ where }),
         ] as any)) as [any[], number];
-        return { data, total, totalPages: Math.ceil(total / limit) };
+        // Summary follows the same owner-scoped `where`, so a teacher's tiles
+        // count only their own rows.
+        const summary = await this.computeSummary(where);
+        return {
+            data,
+            total,
+            totalPages: Math.ceil(total / paging.limit),
+            page: paging.page,
+            limit: paging.limit,
+            ...(summary ? { summary } : {}),
+        };
     }
 
     async findOneOwned(id: string, user: AuthUser) {

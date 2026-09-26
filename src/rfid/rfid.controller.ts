@@ -1,7 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { RfidDevicesService, RfidRecordsService } from './rfid.service';
+import { parseListQuery } from 'src/common/list-query';
 import {
     CreateRfidDeviceDto,
     UpdateRfidDeviceDto,
@@ -10,7 +13,8 @@ import {
 } from './rfid.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('rfid-attendance')
 @Controller('rfid-devices')
 export class RfidDevicesController {
     constructor(private readonly service: RfidDevicesService) { }
@@ -21,8 +25,9 @@ export class RfidDevicesController {
     }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 100, search);
+    findAll(@Query() query: Record<string, string>) {
+        const q = parseListQuery(query);
+        return this.service.findAll(q.page, q.limit, q.search, q.term, q.year, q.filters);
     }
 
     @Get(':id')
@@ -42,7 +47,8 @@ export class RfidDevicesController {
 }
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('rfid-attendance', 'attendance')
 @Controller('rfid-records')
 export class RfidRecordsController {
     constructor(private readonly service: RfidRecordsService) { }
@@ -53,8 +59,9 @@ export class RfidRecordsController {
     }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
-        return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 500, search);
+    findAll(@Query() query: Record<string, string>) {
+        const q = parseListQuery(query);
+        return this.service.findAll(q.page, q.limit, q.search, q.term, q.year, q.filters);
     }
 
     @Get(':id')

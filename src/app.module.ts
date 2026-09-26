@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { CacheModule } from '@nestjs/cache-manager';
+import { StudentBalanceModule } from './common/student-balance.module';
 import { createKeyv } from '@keyv/redis';
 import { join } from 'path';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -53,6 +54,7 @@ import { PdfModule } from './pdf/pdf.module';
 
 @Module({
     imports: [
+        StudentBalanceModule,
         ConfigModule.forRoot({
             isGlobal: true,
         }),

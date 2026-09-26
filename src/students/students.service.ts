@@ -6,6 +6,17 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditService } from 'src/audit/audit.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { StudentAccountsService } from './student-accounts.service';
+
+/** Turn a Prisma unique-constraint error into a message naming the real field. */
+function uniqueClashMessage(e: Prisma.PrismaClientKnownRequestError) {
+    const target = e.meta?.target;
+    const fields = Array.isArray(target) ? target.join(',') : `${target ?? ''}`;
+    if (fields.includes('studentNumber')) {
+        return 'That student number is already assigned to another pupil';
+    }
+    return 'A student with this admission number already exists';
+}
 
 @Injectable()
 export class StudentsService {
@@ -27,7 +38,22 @@ export class StudentsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly auditService: AuditService,
+        private readonly accounts: StudentAccountsService,
     ) { }
+
+    /**
+     * Give a new pupil their student number and login. Never allowed to fail the
+     * enrolment itself — a pupil without a login can be repaired later via
+     * POST /students/:id/account, but a lost admission record cannot.
+     */
+    private async provisionQuietly(studentIds: string[]) {
+        try {
+            return await this.accounts.provisionMany(studentIds);
+        } catch (e) {
+            console.warn('[students] account provisioning failed:', e);
+            return null;
+        }
+    }
 
     async create(dto: CreateStudentDto) {
         try {
@@ -44,10 +70,12 @@ export class StudentsService {
                 entityId: student.id,
                 after: student,
             });
-            return student;
+            await this.provisionQuietly([student.id]);
+            // Re-read so the caller gets the generated studentNumber.
+            return (await this.prisma.student.findUnique({ where: { id: student.id } })) ?? student;
         } catch (e) {
             if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-                throw new BadRequestException('A student with this admission number already exists');
+                throw new BadRequestException(uniqueClashMessage(e));
             }
             throw e;
         }
@@ -69,7 +97,23 @@ export class StudentsService {
             entity: 'Student',
             after: { requested: students.length, created: result.count },
         });
-        return { requested: students.length, created: result.count };
+
+        // createMany returns no ids, so pick up whichever of the imported
+        // admission numbers landed and give each of those pupils a login.
+        const created = await this.prisma.student.findMany({
+            where: {
+                admissionNo: { in: data.map((d) => d.admissionNo) },
+                studentNumber: null,
+            },
+            select: { id: true },
+        });
+        const accounts = await this.provisionQuietly(created.map((c) => c.id));
+
+        return {
+            requested: students.length,
+            created: result.count,
+            accountsCreated: accounts?.created ?? 0,
+        };
     }
 
     async findAll(page = 1, limit = 20, search?: string, className?: string, status?: string) {
@@ -79,6 +123,7 @@ export class StudentsService {
                 { firstName: { contains: search } },
                 { lastName: { contains: search } },
                 { admissionNo: { contains: search } },
+                { studentNumber: { contains: search } },
                 { className: { contains: search } },
                 { stream: { contains: search } },
                 { house: { contains: search } },
@@ -104,6 +149,12 @@ export class StudentsService {
         return { data, total, totalPages: Math.ceil(total / limit) };
     }
 
+    /** Ids of every pupil, for batch operations like account backfill. */
+    async findAllIds(): Promise<string[]> {
+        const rows = await this.prisma.student.findMany({ select: { id: true } });
+        return rows.map((r) => r.id);
+    }
+
     async findOne(id: string) {
         const student = await this.prisma.student.findUnique({ where: { id } });
         if (!student) throw new NotFoundException('Student not found');
@@ -114,6 +165,12 @@ export class StudentsService {
         const before = await this.findOne(id);
         try {
             const student = await this.prisma.student.update({ where: { id }, data: dto });
+
+            // The student number is a login credential, not just a label — if it
+            // changed, the pupil's account has to follow it.
+            if (dto.studentNumber && dto.studentNumber !== before.studentNumber) {
+                await this.accounts.handleNumberChange(id, before.studentNumber, dto.studentNumber);
+            }
             // If the photo was replaced (or cleared), remove the old file from disk.
             const photoProvided = Object.prototype.hasOwnProperty.call(dto, 'passportPhoto');
             if (photoProvided && before.passportPhoto && before.passportPhoto !== dto.passportPhoto) {
@@ -129,7 +186,7 @@ export class StudentsService {
             return student;
         } catch (e) {
             if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-                throw new BadRequestException('A student with this admission number already exists');
+                throw new BadRequestException(uniqueClashMessage(e));
             }
             throw e;
         }
