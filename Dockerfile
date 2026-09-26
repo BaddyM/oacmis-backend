@@ -1,6 +1,11 @@
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
+# Prisma detects the OpenSSL version at generate time; without it the slim
+# image falls back to openssl-1.1 engines that don't match the runtime.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -14,6 +19,7 @@ ENV NODE_ENV=production
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
+    openssl \
     fonts-liberation \
     libasound2 \
     libatk-bridge2.0-0 \
