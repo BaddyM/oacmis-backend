@@ -5,58 +5,62 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
-    command: sh -c "npx prisma db push && npm run start:prod"
-    container_name: jubra-backend
+    command: sh -c "npx prisma db push --skip-generate && npm run start:prod"
+    container_name: oacmis-backend
     restart: always
     ports:
-      - "3003:3001"
+      - "3008:3001"
     environment:
-      - DATABASE_URL=mysql://root:Sextape,123@mysql:3306/jubra_db
+      - DATABASE_URL=mysql://root:Sextape,123@mysql:3306/oacmis_db
       - PORT=3001
       - SYSTEM_SECRET=MYAUTHSECRETISVERYSTRONG
       - MODE=Prod
       - REDIS_URL=redis://redis:6379
-      - EMAIL_USER=
-      - EMAIL_PASS=
     volumes:
-      - /root/jubra/jubra-assets:/app/uploads
-      - /root/jubra/assets:/app/src/assets
+      # Served at /uploads and written to by the upload controller (documents, reports, users, website)
+      - /root/oacmis/oacmis-assets:/app/uploads
+    # Chromium (puppeteer PDF generation) crashes on large reports with Docker's default 64MB /dev/shm
+    shm_size: "1gb"
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_started
     networks:
-      - jubra-network
+      - oacmis-network
 
   redis:
     image: redis:7-alpine
-    container_name: jubra-redis
+    container_name: oacmis-redis
     restart: always
     ports:
-      - "6378:6379"
+      - "6377:6379"
     networks:
-      - jubra-network
+      - oacmis-network
 
   mysql:
     image: mysql:9.6.0
-    container_name: jubra-mysql
+    container_name: oacmis-mysql
     restart: always
     ports:
-      - "3307:3306"
+      - "3309:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=Sextape,123
-      - MYSQL_DATABASE=jubra_db
+      - MYSQL_DATABASE=oacmis_db
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pSextape,123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
-      - jubra-network
+      - oacmis-network
 
 networks:
-  jubra-network:
-    name: "jubra-network"
+  oacmis-network:
+    name: "oacmis-network"
     driver: bridge
 
 volumes:
