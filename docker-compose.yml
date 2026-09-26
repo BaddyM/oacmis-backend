@@ -43,7 +43,7 @@ services:
     container_name: oacmis-mysql
     restart: always
     ports:
-      - "3309:3306"
+      - "3305:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=Sextape,123
       - MYSQL_DATABASE=oacmis_db
