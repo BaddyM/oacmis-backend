@@ -59,6 +59,7 @@ export class StudentsService {
         try {
             const data = {
                 ...dto,
+                studentNumber: dto.studentNumber?.trim() || undefined,
                 // Admission number is optional on input — generate a unique one
                 // when it isn't provided.
                 admissionNo: dto.admissionNo?.trim() || `ADM-${Date.now()}`,
@@ -163,6 +164,10 @@ export class StudentsService {
 
     async update(id: string, dto: UpdateStudentDto) {
         const before = await this.findOne(id);
+        // A blank student number means "leave it alone", never "clear it".
+        if (dto.studentNumber !== undefined) {
+            dto.studentNumber = dto.studentNumber.trim() || undefined;
+        }
         try {
             const student = await this.prisma.student.update({ where: { id }, data: dto });
 
