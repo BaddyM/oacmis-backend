@@ -3,15 +3,12 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
 import { RequiresPage } from 'src/auth/requires-page.decorator';
-import { Roles } from 'src/auth/roles.decorator';
-import { RolesGuard } from 'src/auth/roles.guard';
 import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto, UpdateExpenseDto } from './expenses.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
-@Roles('admin')
-@RequiresPage('expenses', 'reports')
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('expenses')
 @Controller('expenses')
 export class ExpensesController {
     constructor(private readonly service: ExpensesService) { }

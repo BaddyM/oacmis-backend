@@ -3,20 +3,17 @@ import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
 import { RequiresPage } from 'src/auth/requires-page.decorator';
-import { Roles } from 'src/auth/roles.decorator';
-import { RolesGuard } from 'src/auth/roles.guard';
 import { InventoryService } from './inventory.service';
 import { parseListQuery } from 'src/common/list-query';
 import { CreateInventoryItemDto, UpdateInventoryItemDto } from './inventory.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
 @RequiresPage('inventory')
 @Controller('inventory')
 export class InventoryController {
     constructor(private readonly service: InventoryService) { }
 
-    @Roles('admin')
 
     @Post()
     create(@Body() dto: CreateInventoryItemDto) {
@@ -43,14 +40,12 @@ export class InventoryController {
         return this.service.findOne(id);
     }
 
-    @Roles('admin')
 
     @Patch(':id')
     update(@Param('id') id: string, @Body() dto: UpdateInventoryItemDto) {
         return this.service.update(id, dto);
     }
 
-    @Roles('admin')
 
     @Delete(':id')
     remove(@Param('id') id: string) {

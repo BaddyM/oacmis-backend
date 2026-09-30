@@ -4,20 +4,17 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
 import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { FEES_PAGES } from 'src/auth/page-groups';
-import { Roles } from 'src/auth/roles.decorator';
-import { RolesGuard } from 'src/auth/roles.guard';
 import { StudentFeesService } from './student-fees.service';
 import { CreateFeeRecordDto, UpdateFeeRecordDto } from './student-fees.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
 @RequiresPage(...FEES_PAGES)
 @Controller('student-fees')
 export class StudentFeesController {
     constructor(private readonly service: StudentFeesService) { }
 
-    @Roles('admin')
-
+    @RequiresPage('student-fees', 'online-fee-payment')
     @Post()
     create(@Body() dto: CreateFeeRecordDto) {
         return this.service.create(dto);
@@ -74,15 +71,13 @@ export class StudentFeesController {
         return this.service.findOne(id);
     }
 
-    @Roles('admin')
-
+    @RequiresPage('student-fees', 'online-fee-payment')
     @Patch(':id')
     update(@Param('id') id: string, @Body() dto: UpdateFeeRecordDto) {
         return this.service.update(id, dto);
     }
 
-    @Roles('admin')
-
+    @RequiresPage('student-fees', 'online-fee-payment')
     @Delete(':id')
     remove(@Param('id') id: string) {
         return this.service.remove(id);

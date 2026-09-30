@@ -51,6 +51,10 @@ import { AppSettingsModule } from './app-settings/app-settings.module';
 import { PreferencesModule } from './preferences/preferences.module';
 import { ResourcesModule } from './resources/resources.module';
 import { PdfModule } from './pdf/pdf.module';
+import { SmsModule } from './sms/sms.module';
+import { SickBayModule } from './sick-bay/sick-bay.module';
+import { WalletsModule } from './wallets/wallets.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
     imports: [
@@ -124,6 +128,10 @@ import { PdfModule } from './pdf/pdf.module';
         PreferencesModule,
         ResourcesModule,
         PdfModule,
+        SmsModule,
+        SickBayModule,
+        WalletsModule,
+        SubscriptionModule,
     ],
     controllers: [],
     providers: [],

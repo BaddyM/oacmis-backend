@@ -114,6 +114,7 @@ export class AuthService {
                 isActive: user.isActive,
                 email: user.email,
                 permissions: user.permissions ?? null,
+                isSystemOwner: user.isSystemOwner,
                 studentNumber,
                 // A pupil who has never changed their password is still using
                 // their student number as one; the portal nudges them to change it.

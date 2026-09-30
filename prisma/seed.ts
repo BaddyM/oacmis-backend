@@ -22,6 +22,8 @@ async function main() {
             password: await bcrypt.hash(password, 10),
             role: UserRole.admin,
             isActive: true,
+            // The vendor's protected Administrator account (manages subscriptions).
+            isSystemOwner: true,
         },
     });
     console.log(`Created admin user: ${user.email} (password: ${password})`);

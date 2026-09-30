@@ -14,11 +14,24 @@ datasource db {
 // teachers, classes, attendance, fees, etc.) are added on top.
 // ============================================================
 
+// Mirrors USER_ROLES in the frontend (src/services/usersService.ts). Only ever
+// add values: each is stored on existing users.
 enum UserRole {
   admin
+  director
+  headteacher
+  deputy
+  dos
   teacher
-  student
+  bursar
+  secretary
+  librarian
+  nurse
+  matron
+  storekeeper
+  canteen
   staff
+  student
 }
 
 enum NotificationType {
@@ -38,6 +51,10 @@ model User {
   accessToken         String?              @db.VarChar(512)
   password            String
   role                UserRole
+  // The vendor's built-in Administrator account. Exactly one user carries it;
+  // only that account manages subscriptions, and no one else may edit,
+  // deactivate or delete it. Never settable through the API.
+  isSystemOwner       Boolean              @default(false)
   // Per-user page access override. null => fall back to the role's default
   // page set (see src/lib/pageRegistry.tsx in the frontend). When set, it is a
   // JSON array of page keys the user is allowed to open.
@@ -707,6 +724,12 @@ model Blast {
   body       String?  @db.Text
   recipients Int      @default(0)
   sentAt     String?
+  // Delivery outcome for SMS sent through the gateway. Email blasts and rows
+  // written before the gateway existed leave these null/zero.
+  status     String?
+  failed     Int      @default(0)
+  cost       Float?
+  error      String?  @db.Text
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now()) @updatedAt
 }
@@ -775,4 +798,128 @@ model Resource {
   updatedAt DateTime @default(now()) @updatedAt
 
   @@index([subject])
+}
+
+// One SMS handed to the gateway (EgoSMS). Written by SmsService for every send
+// — bulk blasts, sick bay alerts and wallet receipts alike — so the school can
+// see exactly who was texted, what it cost and why a message failed.
+model SmsLog {
+  id          String   @id @default(uuid())
+  phone       String
+  message     String   @db.Text
+  // What triggered it: blast | sick-bay | wallet | test
+  source      String
+  sourceId    String?
+  status      String // sent | failed
+  cost        Float?
+  providerRef String?
+  error       String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([source])
+  @@index([createdAt])
+}
+
+// Pocket money / canteen account for one pupil. `balance` is only ever changed
+// by WalletsService inside a transaction that also writes a WalletTransaction,
+// so the ledger always sums to the balance.
+model Wallet {
+  id           String              @id @default(uuid())
+  studentId    String              @unique
+  studentName  String
+  className    String?
+  balance      Float               @default(0)
+  // Maximum a pupil may spend at the canteen in one day; null = no limit.
+  dailyLimit   Float?
+  // Card tag scanned at the canteen till. Kept here rather than on Student
+  // because the RFID attendance module records tags per scan, not per pupil.
+  rfidTag      String?             @unique
+  // active | frozen. A frozen wallet can take deposits but not purchases.
+  status       String              @default("active")
+  transactions WalletTransaction[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @default(now()) @updatedAt
+
+  @@index([className])
+}
+
+model WalletTransaction {
+  id           String   @id @default(uuid())
+  walletId     String
+  wallet       Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  studentId    String
+  studentName  String
+  // deposit | purchase | withdrawal | reversal
+  type         String
+  // Signed: deposits are positive, purchases and withdrawals negative.
+  amount       Float
+  balanceAfter Float
+  method       String?
+  reference    String?
+  description  String?
+  // The transaction a reversal undoes, and the reversal that undid this one.
+  reversesId   String?
+  reversedById String?
+  recordedBy   String?
+  createdAt    DateTime @default(now())
+
+  @@index([walletId])
+  @@index([studentId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// A pupil's visit to the school sick bay. Health records hold the standing
+// medical profile; this is the day-to-day clinic register.
+model SickBayVisit {
+  id             String   @id @default(uuid())
+  studentId      String?
+  studentName    String
+  className      String?
+  // ISO YYYY-MM-DD, like the other date columns in this schema.
+  visitDate      String
+  timeIn         String?
+  timeOut        String?
+  complaint      String   @db.Text
+  temperature    Float?
+  diagnosis      String?  @db.Text
+  treatment      String?  @db.Text
+  medication     String?  @db.Text
+  // in-sickbay | returned-to-class | sent-home | referred
+  status         String   @default("in-sickbay")
+  referredTo     String?
+  attendedBy     String?
+  notes          String?  @db.Text
+  parentNotified Boolean  @default(false)
+  notifiedAt     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  @@index([studentId])
+  @@index([visitDate])
+  @@index([status])
+}
+
+// A paid period of use. The system is fully usable only while some row has
+// status "active" and startsAt <= now < endsAt; otherwise it is read-only
+// (see SubscriptionGuard). Rows are kept as history, never deleted.
+model Subscription {
+  id           String    @id @default(uuid())
+  // daily | weekly | annual | trial
+  plan         String
+  quantity     Int       @default(1)
+  startsAt     DateTime
+  endsAt       DateTime
+  // active | revoked
+  status       String    @default("active")
+  amount       Float?
+  notes        String?   @db.Text
+  createdBy    String?
+  revokedAt    DateTime?
+  revokedBy    String?
+  revokeReason String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+
+  @@index([status, startsAt, endsAt])
 }

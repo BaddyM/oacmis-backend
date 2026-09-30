@@ -17,6 +17,7 @@ export const STUDENT_DIRECTORY_PAGES: PageKey[] = [
     'student-fees', 'fee-structures', 'online-fee-payment',
     'certificates', 'student-id', 'library', 'transport', 'hostel',
     'inventory', 'alumni', 'bulk-communication', 'notifications',
+    'sick-bay', 'pocket-money', 'canteen',
 ];
 
 /** Staff records: the people pages plus everything that pays or schedules them. */

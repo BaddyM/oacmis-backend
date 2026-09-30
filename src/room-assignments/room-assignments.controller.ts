@@ -3,19 +3,16 @@ import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
 import { RequiresPage } from 'src/auth/requires-page.decorator';
-import { Roles } from 'src/auth/roles.decorator';
-import { RolesGuard } from 'src/auth/roles.guard';
 import { RoomAssignmentsService } from './room-assignments.service';
 import { CreateRoomAssignmentDto } from './room-assignments.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
+@UseGuards(AuthGuard, PagePermissionsGuard)
 @RequiresPage('hostel')
 @Controller('room-assignments')
 export class RoomAssignmentsController {
     constructor(private readonly service: RoomAssignmentsService) { }
 
-    @Roles('admin')
 
     @Post()
     create(@Body() dto: CreateRoomAssignmentDto) {
@@ -34,7 +31,6 @@ export class RoomAssignmentsController {
         return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 200, search);
     }
 
-    @Roles('admin')
 
     @Delete(':id')
     remove(@Param('id') id: string) {

@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -27,6 +27,7 @@ const userSelect = {
     isActive: true,
     role: true,
     permissions: true,
+    isSystemOwner: true,
     createdAt: true,
     updatedAt: true,
 } as const;
@@ -162,7 +163,31 @@ export class UserService {
         return data;
     }
 
-    async update(userId: string, updateUserDto: UpdateUserDto) {
+    /**
+     * The Administrator (system owner) account can be viewed by everyone but
+     * changed only by itself — and even then it can't be switched off, lose
+     * the admin role or have its pages restricted, which would lock the owner
+     * out of managing subscriptions.
+     */
+    private async guardOwnerAccount(userId: string, callerId: string | undefined, dto?: UpdateUserDto) {
+        const target = await this.prisma.user.findUnique({ where: { id: userId }, select: { isSystemOwner: true } });
+        if (!target?.isSystemOwner) return;
+        if (callerId !== userId) {
+            throw new ForbiddenException('The Administrator account can only be viewed, not changed');
+        }
+        if (!dto) throw new ForbiddenException('The Administrator account cannot be deleted');
+        if (dto.role !== undefined && dto.role !== 'admin') {
+            throw new ForbiddenException('The Administrator account must keep the Administrator role');
+        }
+        if (dto.isActive === false) throw new ForbiddenException('The Administrator account cannot be deactivated');
+        if (dto.permissions !== undefined && dto.permissions !== null) {
+            throw new ForbiddenException('The Administrator account always has every page');
+        }
+    }
+
+    async update(userId: string, updateUserDto: UpdateUserDto, callerId?: string) {
+        await this.guardOwnerAccount(userId, callerId, updateUserDto);
+
         // 1. Destructure the password out of the DTO
         const { password, permissions, ...otherData } = updateUserDto;
 
@@ -205,7 +230,8 @@ export class UserService {
         return data;
     }
 
-    async remove(userId: string) {
+    async remove(userId: string, callerId?: string) {
+        await this.guardOwnerAccount(userId, callerId);
         const before = await this.prisma.user.findUnique({
             where: { id: userId },
             select: userSelect,

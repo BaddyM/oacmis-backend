@@ -1,19 +1,20 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { Roles } from 'src/auth/roles.decorator';
-import { RolesGuard } from 'src/auth/roles.guard';
+import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
+import { RequiresPage } from 'src/auth/requires-page.decorator';
 import { RouteAssignmentsService } from './route-assignments.service';
 import { CreateRouteAssignmentDto } from './route-assignments.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard)
+// Reads are open to any signed-in user (no controller-level page); writes
+// need the Transport page.
+@UseGuards(AuthGuard, PagePermissionsGuard)
 @Controller('route-assignments')
 export class RouteAssignmentsController {
     constructor(private readonly service: RouteAssignmentsService) { }
 
-    @Roles('admin')
-
+    @RequiresPage('transport')
     @Post()
     create(@Body() dto: CreateRouteAssignmentDto) {
         return this.service.create(dto);
@@ -31,8 +32,7 @@ export class RouteAssignmentsController {
         return this.service.findAll(page ? parseInt(page) : 1, limit ? parseInt(limit) : 200, search);
     }
 
-    @Roles('admin')
-
+    @RequiresPage('transport')
     @Delete(':id')
     remove(@Param('id') id: string) {
         return this.service.remove(id);

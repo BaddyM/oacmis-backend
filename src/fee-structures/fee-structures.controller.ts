@@ -3,25 +3,24 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
 import { RequiresPage } from 'src/auth/requires-page.decorator';
-import { Roles } from 'src/auth/roles.decorator';
-import { RolesGuard } from 'src/auth/roles.guard';
 import { FeeStructuresService } from './fee-structures.service';
 import { CreateFeeStructureDto, GenerateInvoicesDto, UpdateFeeStructureDto } from './fee-structures.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
-@Roles('admin')
-@RequiresPage('fee-structures', 'student-fees', 'reports')
+@UseGuards(AuthGuard, PagePermissionsGuard)
+@RequiresPage('fee-structures', 'student-fees')
 @Controller('fee-structures')
 export class FeeStructuresController {
     constructor(private readonly service: FeeStructuresService) { }
 
+    @RequiresPage('fee-structures')
     @Post()
     create(@Body() dto: CreateFeeStructureDto) {
         return this.service.create(dto);
     }
 
     // Bill this structure's term to the whole class, or to dto.studentIds only.
+    @RequiresPage('fee-structures')
     @Post(':id/generate')
     generate(@Param('id') id: string, @Body() dto: GenerateInvoicesDto) {
         return this.service.generate(id, dto.carryForward ?? true, dto.studentIds);
@@ -49,11 +48,13 @@ export class FeeStructuresController {
         return this.service.findOne(id);
     }
 
+    @RequiresPage('fee-structures')
     @Patch(':id')
     update(@Param('id') id: string, @Body() dto: UpdateFeeStructureDto) {
         return this.service.update(id, dto);
     }
 
+    @RequiresPage('fee-structures')
     @Delete(':id')
     remove(@Param('id') id: string) {
         return this.service.remove(id);

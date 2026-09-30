@@ -1,11 +1,23 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsArray, IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
+// Must match the Prisma UserRole enum and the frontend's USER_ROLES.
 export enum UserRole {
     admin = "admin",
+    director = "director",
+    headteacher = "headteacher",
+    deputy = "deputy",
+    dos = "dos",
     teacher = "teacher",
-    student = "student",
+    bursar = "bursar",
+    secretary = "secretary",
+    librarian = "librarian",
+    nurse = "nurse",
+    matron = "matron",
+    storekeeper = "storekeeper",
+    canteen = "canteen",
     staff = "staff",
+    student = "student",
 }
 
 export class CreateUserDto {

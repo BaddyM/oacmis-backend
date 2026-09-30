@@ -1,14 +1,15 @@
 import { NotFoundException } from '@nestjs/common';
 import { BaseCrudService } from './base-crud.service';
 import { AuthUser } from './authed-request';
+import { FULL_ACCESS_ROLES } from 'src/auth/page-access';
 
 /**
  * BaseCrudService for records that belong to the user who created them.
  *
- * Roles in `ownerScopedRoles` are confined to rows whose `userId` matches their
- * own; every other role keeps the unfiltered view. Scoping is opt-in per role
- * rather than "everyone but admin" on purpose: a quiz is authored by a teacher
- * but *sat* by a student, so students must still read the full published list.
+ * Staff-level roles (see isScopedRole) are confined to rows whose `userId`
+ * matches their own; leadership roles and students keep the unfiltered view.
+ * Students are exempt on purpose: a quiz is authored by a teacher but *sat* by
+ * a student, so students must still read the full published list.
  *
  * The filter lives in the service rather than the page, so it holds for anyone
  * calling the API directly. Rows with a null `userId` (created before ownership
@@ -17,15 +18,20 @@ import { AuthUser } from './authed-request';
  * `userId` is always taken from the verified JWT, never from the request body.
  */
 export abstract class OwnedCrudService extends BaseCrudService {
-    // Roles confined to their own rows. Everyone else is unaffected.
-    protected ownerScopedRoles = ['teacher'];
+    // Staff-level roles (teacher, bursar, librarian, …) are confined to their
+    // own rows; leadership roles in FULL_ACCESS_ROLES see everything. Students
+    // are not scoped: they must read the full published quiz list, and hold
+    // no other page backed by this service.
+    protected isScopedRole(role: string) {
+        return role !== 'student' && !FULL_ACCESS_ROLES.includes(role);
+    }
     // Fields only an unscoped role may set. Stripped from an owner-scoped
     // caller's payload, so e.g. a teacher can't approve their own leave request
     // by calling PATCH directly even though the UI hides the button.
     protected privilegedFields: string[] = ['userId'];
 
     protected isOwnerScoped(user: AuthUser) {
-        return this.ownerScopedRoles.includes(user.role);
+        return this.isScopedRole(user.role);
     }
 
     async createOwned(data: any, user: AuthUser) {

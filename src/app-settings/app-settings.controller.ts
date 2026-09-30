@@ -1,13 +1,29 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Put, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { Roles } from 'src/auth/roles.decorator';
-import { RolesGuard } from 'src/auth/roles.guard';
+import { PageKey, resolveAllowedPages } from 'src/auth/page-access';
 import { AppSettingsService } from './app-settings.service';
 import { UpsertSettingDto } from './app-settings.dto';
 
+/**
+ * Settings that belong to one page rather than to the whole school. Anyone who
+ * holds that page may save them — e.g. a Director of Studies with Reports can
+ * edit the report card template. Every other key (school profile, academic
+ * session, security…) stays admin-only.
+ */
+const PAGE_OWNED_SETTINGS: Record<string, PageKey[]> = {
+    report_template: ['reports'],
+    termly_report_template: ['reports'],
+    termly_report_data: ['reports'],
+    nursery_report_template: ['reports'],
+    nursery_report_remarks: ['reports'],
+    grading_scale: ['grades', 'settings'],
+    certificate_design: ['certificates'],
+    id_card_design: ['student-id'],
+};
+
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard)
 @Controller('app-settings')
 export class AppSettingsController {
     constructor(private readonly service: AppSettingsService) { }
@@ -20,11 +36,19 @@ export class AppSettingsController {
         return this.service.get(key);
     }
 
-    // Only admins can change shared settings.
-    @Roles('admin')
     @Put(':key')
     @ApiParam({ name: 'key' })
-    set(@Param('key') key: string, @Body() dto: UpsertSettingDto) {
+    set(
+        @Param('key') key: string,
+        @Body() dto: UpsertSettingDto,
+        @Req() req: { user?: { role?: string; permissions?: unknown } },
+    ) {
+        const user = req.user;
+        const pages = PAGE_OWNED_SETTINGS[key];
+        const allowed =
+            user?.role === 'admin' ||
+            (!!pages && pages.some((p) => resolveAllowedPages(user?.role, user?.permissions).has(p)));
+        if (!allowed) throw new ForbiddenException('You do not have permission to change this setting');
         return this.service.set(key, dto.value);
     }
 }

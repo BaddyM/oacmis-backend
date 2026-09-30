@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, BadRequestException, Res, UseGuards, Query, Inject } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, BadRequestException, Res, UseGuards, Query, Inject, Req } from '@nestjs/common';
+import type { AuthedRequest } from 'src/common/authed-request';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -86,9 +87,9 @@ export class UserController {
     @RequiresPage('users')
     @ApiParam({ name: "userId" })
     @Patch(':userId')
-    async update(@Param('userId') userId: string, @Body() updateUserDto: UpdateUserDto) {
+    async update(@Param('userId') userId: string, @Body() updateUserDto: UpdateUserDto, @Req() req: AuthedRequest) {
         await this.cache.del(`/user/${userId}`);
-        return this.userService.update(userId, updateUserDto);
+        return this.userService.update(userId, updateUserDto, req.user?.id);
     }
 
     @ApiBearerAuth()
@@ -97,7 +98,7 @@ export class UserController {
     @RequiresPage('users')
     @ApiParam({ name: "userId" })
     @Delete(':userId')
-    remove(@Param('userId') userId: string) {
-        return this.userService.remove(userId);
+    remove(@Param('userId') userId: string, @Req() req: AuthedRequest) {
+        return this.userService.remove(userId, req.user?.id);
     }
 }

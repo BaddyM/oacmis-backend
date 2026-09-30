@@ -30,6 +30,10 @@ const pages = [...src.matchAll(/key: '([^']+)', path: '([^']+)'[\s\S]*?roles: (\
     }));
 if (!pages.length) throw new Error('Could not read any pages from the registry');
 
+const fullAccess = [...(src.match(/FULL_ACCESS_ROLES: readonly UserRole\[\] = \[([^\]]*)\]/)?.[1] ?? '')
+    .matchAll(/'(\w+)'/g)].map((m) => m[1]);
+if (!fullAccess.length) throw new Error('Could not read FULL_ACCESS_ROLES from the registry');
+
 const alwaysAllowed = [...(src.match(/ALWAYS_ALLOWED_PAGES: readonly PageKey\[\] = \[([^\]]*)\]/)?.[1] ?? '')
     .matchAll(/'([\w-]+)'/g)].map((m) => m[1]);
 
@@ -60,6 +64,15 @@ const PAGE_KEY_SET: ReadonlySet<string> = new Set(PAGE_KEYS);
 export const ROLE_DEFAULT_PAGES: Record<string, readonly PageKey[]> = {
 ${defaults}
 };
+
+/** Every role a user may hold. */
+export const ALL_ROLES = [${list(allRoles)}] as const;
+
+/**
+ * Leadership roles with full control of the pages they hold. Every other staff
+ * role is confined to its own rows on shared pages (see OwnedCrudService).
+ */
+export const FULL_ACCESS_ROLES: readonly string[] = [${list(fullAccess)}];
 
 /** Pages every signed-in user keeps regardless of role or override. */
 export const ALWAYS_ALLOWED_PAGES: readonly PageKey[] = [${list(alwaysAllowed)}];

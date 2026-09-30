@@ -3,14 +3,11 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { PagePermissionsGuard } from 'src/auth/page-permissions.guard';
 import { RequiresPage } from 'src/auth/requires-page.decorator';
-import { Roles } from 'src/auth/roles.decorator';
-import { RolesGuard } from 'src/auth/roles.guard';
 import { PromotionsService } from './promotions.service';
 import { RunPromotionDto } from './promotions.dto';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard, RolesGuard, PagePermissionsGuard)
-@Roles('admin')
+@UseGuards(AuthGuard, PagePermissionsGuard)
 @RequiresPage('promotions')
 @Controller('promotions')
 export class PromotionsController {
